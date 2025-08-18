@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # Redis для очередей
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Основной сервер
+  main-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+      - NODE_ENV=production
+    depends_on:
+      - cache-service
+      - balance-service
+      - ai-gateway
+
+  # Balance Service
+  balance-service:
+    build:
+      context: ./balance-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BALANCE_SERVICE_PORT=3002
+    depends_on:
+      - cache-service
+      - redis
+
+  # Telegram Bot Service
+  telegram-bot-service:
+    build:
+      context: ./telegram-bot-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+      - AI_GATEWAY_URL=http://ai-gateway:3004
+      - TELEGRAM_BOT_SERVICE_PORT=3003
+    depends_on:
+      - cache-service
+      - ai-gateway
+
+  # Cache Service
+  cache-service:
+    build:
+      context: ./cache-service
+      dockerfile: Dockerfile
+    ports:
+      - "3013:3013"
+    environment:
+      - CACHE_SERVICE_PORT=3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+
+  # AI Gateway Service
+  ai-gateway:
+    build:
+      context: ./ai-gateway-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - AI_GATEWAY_PORT=3004
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+      - OPENAI_SERVICE_URL=http://openai-service:3005
+      - GEMINI_SERVICE_URL=http://gemini-service:3006
+      - ANTHROPIC_SERVICE_URL=http://anthropic-service:3007
+    depends_on:
+      - cache-service
+      - openai-service
+      - gemini-service
+      - anthropic-service
+
+  # OpenAI Service
+  openai-service:
+    build:
+      context: ./openai-service
+      dockerfile: Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      - OPENAI_SERVICE_PORT=3005
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+    deploy:
+      replicas: 3
+    depends_on:
+      - cache-service
+
+  # Gemini Service
+  gemini-service:
+    build:
+      context: ./gemini-service
+      dockerfile: Dockerfile
+    ports:
+      - "3006:3006"
+    environment:
+      - GEMINI_SERVICE_PORT=3006
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+    deploy:
+      replicas: 2
+    depends_on:
+      - cache-service
+
+  # Anthropic Service
+  anthropic-service:
+    build:
+      context: ./anthropic-service
+      dockerfile: Dockerfile
+    ports:
+      - "3007:3007"
+    environment:
+      - ANTHROPIC_SERVICE_PORT=3007
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    deploy:
+      replicas: 1
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - main-server
+
+volumes:
+  redis_data: 

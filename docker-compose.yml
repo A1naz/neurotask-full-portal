@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  main-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - NODE_ENV=production
+    depends_on:
+      - balance-service
+
+  balance-service:
+    build:
+      context: ./balance-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - BALANCE_SERVICE_PORT=3001
+      - BALANCE_SERVICE_API_KEY=your-secret-api-key-here
+    depends_on:
+      - main-server
+
+  telegram-bot-service:
+    build:
+      context: ./telegram-bot-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGODB_URI=mongodb://neurotask:2SF7ZA0HU17Dq)223@87.239.104.89/neurotask
+      - TELEGRAM_BOT_SERVICE_PORT=3002
+    depends_on:
+      - main-server
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - main-server 

@@ -1,0 +1,72 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+
+const TokenBalanceContext = createContext();
+
+export const useTokenBalance = () => {
+  const context = useContext(TokenBalanceContext);
+  if (!context) {
+    throw new Error('useTokenBalance must be used within a TokenBalanceProvider');
+  }
+  return context;
+};
+
+export const TokenBalanceProvider = ({ children }) => {
+  const [balance, setBalance] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const { user, API_BASE } = useAuth();
+
+  const fetchBalance = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/api/tokens/balance`, {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBalance(data.balance || 0);
+      }
+    } catch (error) {
+      } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateBalance = (newBalance) => {
+    setBalance(newBalance);
+  };
+
+  // Загружаем баланс при инициализации
+  useEffect(() => {
+    if (user) {
+      fetchBalance();
+    }
+  }, [user, API_BASE]);
+
+  // Автообновление баланса каждые 30 секунд
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      fetchBalance();
+    }, 30000); // 30 секунд
+
+    return () => clearInterval(interval);
+  }, [user, API_BASE]);
+
+  const value = {
+    balance,
+    loading,
+    fetchBalance,
+    updateBalance
+  };
+
+  return (
+    <TokenBalanceContext.Provider value={value}>
+      {children}
+    </TokenBalanceContext.Provider>
+  );
+}; 

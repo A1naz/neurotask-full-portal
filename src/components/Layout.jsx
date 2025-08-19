@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,7 @@ import {
   Music,
   CheckSquare
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton'; // Импортируем Skeleton
 import {
   CustomDropdown,
   DropdownItem,
@@ -37,8 +38,31 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenBalance } from '@/contexts/TokenBalanceContext';
 
+// Маппинг имен иконок на компоненты иконок
+const iconComponents = {
+  MessageSquare,
+  Sparkles,
+  CheckSquare,
+  Wand2,
+  Video,
+  Image,
+  Music,
+  Users,
+  FileText,
+  TrendingUp,
+  Share2,
+  Target,
+  Megaphone,
+  ShoppingCart,
+  Headphones,
+};
+
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuItems, setMenuItems] = useState([]);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(true);
+  const [menuError, setMenuError] = useState(null);
+  
   const [agentsExpanded, setAgentsExpanded] = useState(() => {
     // Загружаем состояние из localStorage при инициализации
     const saved = localStorage.getItem('agentsExpanded');
@@ -54,6 +78,49 @@ const Layout = ({ children }) => {
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Загрузка меню с сервера
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      if (!user) return;
+      
+      setIsLoadingMenu(true);
+      setMenuError(null);
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/menu`, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить конфигурацию меню.');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Преобразуем iconName в реальные компоненты иконок
+          const transformedMenuItems = data.menuItems.map(item => ({
+            ...item,
+            icon: iconComponents[item.iconName],
+            children: item.children ? item.children.map(child => ({
+              ...child,
+              icon: iconComponents[child.iconName],
+            })) : [],
+          }));
+          setMenuItems(transformedMenuItems);
+        } else {
+          throw new Error(data.message || 'Ошибка при получении меню.');
+        }
+      } catch (error) {
+        setMenuError(error.message);
+      } finally {
+        setIsLoadingMenu(false);
+      }
+    };
+
+    fetchMenuItems();
+  }, [user, API_BASE]);
 
   // Загрузить настройки интерфейса из базы данных
   const loadInterfaceSettings = async () => {
@@ -132,118 +199,6 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  const menuItems = [
-    {
-      id: 'assistant',
-      label: 'Ассистент',
-      icon: MessageSquare,
-      path: '/assistant',
-      description: 'Telegram календарь бот'
-    },
-    {
-      id: 'multi-chat',
-      label: 'Мульти-чат AI',
-      icon: Sparkles,
-      path: '/assistant/multi-chat',
-      description: 'Отправка запросов во все AI провайдеры'
-    },
-    {
-      id: 'tasks',
-      label: 'Задачи',
-      icon: CheckSquare,
-      path: '/assistant/tasks',
-      description: 'Управление задачами и проектами'
-    },
-    {
-      id: 'generations',
-      label: 'Генерации',
-      icon: Wand2,
-      path: '/generations',
-      description: 'AI генерация медиаконтента',
-      children: [
-        {
-          id: 'video',
-          label: 'Видео',
-          icon: Video,
-          path: '/generations/video',
-          description: 'Генерация видео контента'
-        },
-        {
-          id: 'images',
-          label: 'Изображения',
-          icon: Image,
-          path: '/generations/images',
-          description: 'Генерация изображений'
-        },
-        {
-          id: 'audio',
-          label: 'Аудио',
-          icon: Music,
-          path: '/generations/audio',
-          description: 'Генерация аудио контента'
-        }
-      ]
-    },
-    {
-      id: 'agents',
-      label: 'Агенты',
-      icon: Users,
-      path: '/agents',
-      description: 'AI агенты для различных задач',
-      children: [
-        {
-          id: 'content-factory',
-          label: 'Контент-завод',
-          icon: FileText,
-          path: '/agents/content-factory',
-          description: 'Автоматическая генерация и публикация контента'
-        },
-        {
-          id: 'marketing',
-          label: 'Маркетинг',
-          icon: TrendingUp,
-          path: '/agents/marketing',
-          description: 'Маркетинговые агенты'
-        },
-        {
-          id: 'smm',
-          label: 'SMM',
-          icon: Share2,
-          path: '/agents/smm',
-          description: 'SMM агенты'
-        },
-        {
-          id: 'targetologist',
-          label: 'Таргетолог',
-          icon: Target,
-          path: '/agents/targetologist',
-          description: 'Таргетированная реклама'
-        },
-        {
-          id: 'directologist',
-          label: 'Директолог',
-          icon: Megaphone,
-          path: '/agents/directologist',
-          description: 'Яндекс.Директ агенты'
-        },
-        {
-          id: 'sales',
-          label: 'Продажи',
-          icon: ShoppingCart,
-          path: '/agents/sales',
-          description: 'Агенты продаж'
-        },
-        {
-          id: 'support',
-          label: 'Тех. поддержка',
-          icon: Headphones,
-          path: '/agents/support',
-          description: 'Техническая поддержка'
-        }
-      ]
-    }
-  ];
-
   const isActiveRoute = (path) => {
     if (path === '/assistant') {
       // Для кнопки "Ассистент" активна только если мы точно на /assistant, а не на /assistant/multi-chat
@@ -251,6 +206,140 @@ const Layout = ({ children }) => {
     }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
+
+  const renderMenuItems = () => {
+    if (isLoadingMenu) {
+      return (
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <div className="ml-4 space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+          <Skeleton className="h-10 w-full" />
+          <div className="ml-4 space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        </div>
+      );
+    }
+
+    if (menuError) {
+      return (
+        <div className="text-red-500 text-center p-4">
+          <p>Ошибка загрузки меню:</p>
+          <p className="text-sm">{menuError}</p>
+        </div>
+      );
+    }
+
+    return menuItems.map((item) => {
+      const Icon = item.icon;
+      const hasChildren = item.children && item.children.length > 0;
+      const isActive = isActiveRoute(item.path);
+      
+      return (
+        <div key={item.id}>
+          {hasChildren ? (
+            // Элемент с дочерними элементами (Генерации, Агенты)
+            <div>
+              <div className="flex items-center gap-1 mb-2">
+                {/* Основная кнопка группы */}
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={`flex-1 justify-start ${
+                    isActive 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'hover:bg-blue-50'
+                  }`}
+                  onClick={() => navigate(item.path)}
+                >
+                  {Icon && <Icon className="mr-3 h-5 w-5" />}
+                  {item.label}
+                </Button>
+                
+                {/* Кнопка разворачивания/сворачивания */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 hover:bg-blue-50"
+                  disabled={isSavingSettings}
+                  onClick={() => {
+                    // Обрабатываем изменение состояния для вкладки "Агенты"
+                    if (item.id === 'agents') {
+                      const newState = !agentsExpanded;
+                      setAgentsExpanded(newState);
+                      localStorage.setItem('agentsExpanded', JSON.stringify(newState));
+                      saveInterfaceSettings(newState, generationsExpanded);
+                    } 
+                    // Обрабатываем изменение состояния для вкладки "Генерации"
+                    else if (item.id === 'generations') {
+                      const newState = !generationsExpanded;
+                      setGenerationsExpanded(newState);
+                      localStorage.setItem('generationsExpanded', JSON.stringify(newState));
+                      saveInterfaceSettings(agentsExpanded, newState);
+                    }
+                  }}
+                >
+                  {isSavingSettings ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  ) : (item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              
+              {/* Render children if expanded */}
+              {hasChildren && ((item.id === 'agents' && agentsExpanded) || (item.id === 'generations' && generationsExpanded)) && (
+                <div className="ml-4 space-y-1 mb-2">
+                  {item.children.map((child) => {
+                    const ChildIcon = child.icon;
+                    if (!ChildIcon) return null; // Добавим проверку
+                    const isChildActive = isActiveRoute(child.path);
+                    
+                    return (
+                      <Button
+                        key={child.id}
+                        variant={isChildActive ? "default" : "ghost"}
+                        className={`w-full justify-start text-sm ${
+                          isChildActive 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'hover:bg-blue-50'
+                        }`}
+                        onClick={() => navigate(child.path)}
+                      >
+                        {ChildIcon && <ChildIcon className="mr-3 h-4 w-4" />}
+                        {child.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            // Обычный элемент без дочерних элементов
+            <Button
+              variant={isActive ? "default" : "ghost"}
+              className={`w-full justify-start mb-2 ${
+                isActive 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'hover:bg-blue-50'
+              }`}
+              onClick={() => navigate(item.path)}
+            >
+              {Icon && <Icon className="mr-3 h-5 w-5" />}
+              {item.label}
+            </Button>
+          )}
+        </div>
+      );
+    });
+  }
 
   return (
     <div className="h-screen bg-gray-50 flex">
@@ -296,108 +385,7 @@ const Layout = ({ children }) => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 overflow-y-auto">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const hasChildren = item.children && item.children.length > 0;
-              const isActive = isActiveRoute(item.path);
-              
-              return (
-                <div key={item.id}>
-                  {hasChildren ? (
-                    // Элемент с дочерними элементами (Генерации, Агенты)
-                    <div>
-                      <div className="flex items-center gap-1 mb-2">
-                        {/* Основная кнопка группы */}
-                        <Button
-                          variant={isActive ? "default" : "ghost"}
-                          className={`flex-1 justify-start ${
-                            isActive 
-                              ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                              : 'hover:bg-blue-50'
-                          }`}
-                          onClick={() => navigate(item.path)}
-                        >
-                          <Icon className="mr-3 h-5 w-5" />
-                          {item.label}
-                        </Button>
-                        
-                        {/* Кнопка разворачивания/сворачивания */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-blue-50"
-                          disabled={isSavingSettings}
-                          onClick={() => {
-                            // Обрабатываем изменение состояния для вкладки "Агенты"
-                            if (item.id === 'agents') {
-                              const newState = !agentsExpanded;
-                              setAgentsExpanded(newState);
-                              localStorage.setItem('agentsExpanded', JSON.stringify(newState));
-                              saveInterfaceSettings(newState, generationsExpanded);
-                            } 
-                            // Обрабатываем изменение состояния для вкладки "Генерации"
-                            else if (item.id === 'generations') {
-                              const newState = !generationsExpanded;
-                              setGenerationsExpanded(newState);
-                              localStorage.setItem('generationsExpanded', JSON.stringify(newState));
-                              saveInterfaceSettings(agentsExpanded, newState);
-                            }
-                          }}
-                        >
-                          {isSavingSettings ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          ) : (item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {/* Render children if expanded */}
-                      {hasChildren && ((item.id === 'agents' && agentsExpanded) || (item.id === 'generations' && generationsExpanded)) && (
-                        <div className="ml-4 space-y-1 mb-2">
-                          {item.children.map((child) => {
-                            const ChildIcon = child.icon;
-                            const isChildActive = isActiveRoute(child.path);
-                            
-                            return (
-                              <Button
-                                key={child.id}
-                                variant={isChildActive ? "default" : "ghost"}
-                                className={`w-full justify-start text-sm ${
-                                  isChildActive 
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                    : 'hover:bg-blue-50'
-                                }`}
-                                onClick={() => navigate(child.path)}
-                              >
-                                <ChildIcon className="mr-3 h-4 w-4" />
-                                {child.label}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Обычный элемент без дочерних элементов
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={`w-full justify-start mb-2 ${
-                        isActive 
-                          ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                          : 'hover:bg-blue-50'
-                      }`}
-                      onClick={() => navigate(item.path)}
-                    >
-                      <Icon className="mr-3 h-5 w-5" />
-                      {item.label}
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+            {renderMenuItems()}
           </nav>
 
           {/* User Profile Section - Fixed at bottom */}

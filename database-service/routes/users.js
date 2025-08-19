@@ -41,6 +41,7 @@ router.post('/', requireApiKey, async (req, res) => {
       lastName,
       role,
       balance: 0,
+      isTeamOwner: true,
       verificationCode,
       verificationExpires,
       emailVerified,

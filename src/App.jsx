@@ -181,17 +181,7 @@ function App() {
 
             {/* Team Management */}
             <Route
-              path="/teams"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <TeamManagement />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teams/create"
+              path="/team"
               element={
                 <ProtectedRoute>
                   <Layout>

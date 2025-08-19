@@ -104,6 +104,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['owner', 'admin', 'manager', 'member', 'guest'],
     default: 'member'
+  },
+  // Поля для командной работы
+  position: { type: String }, // Должность
+  permissions: { type: [String], default: [] }, // Права доступа к разделам
+
+  // Настройки AI
+  aiSettings: {
+    // ... existing code ...
   }
 }, {
   timestamps: true

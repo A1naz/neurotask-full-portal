@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session); // Добавляем эту строку
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
@@ -97,6 +98,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Session middleware
 app.use(session({
+  store: new FileStore({ path: './sessions', logFn: function(){} }), // Добавляем хранилище
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: true, // Изменено на true чтобы создавать сессии для всех
@@ -211,6 +213,7 @@ app.use('/api/ping', require('./routes/ping'));
 app.use('/api/api-keys', require('./routes/api-keys'));
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/multi-chat', require('./routes/multi-chat'));
+app.use('/api/menu', require('./routes/menu')); // Подключаем новый роут
 
 // 🔍 МАРШРУТЫ ДЛЯ SELECTED-PROVIDERS (прокси к database-service)
 app.use('/api/selected-providers', require('./routes/selected-providers'));

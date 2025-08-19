@@ -143,3 +143,6 @@ development/
 # package-lock.json
 # pnpm-lock.yaml
 # yarn.lock
+
+# session files
+server/sessions/

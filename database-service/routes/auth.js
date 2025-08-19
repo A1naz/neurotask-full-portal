@@ -18,8 +18,11 @@ router.post('/authenticate', requireApiKey, async (req, res) => {
       });
     }
 
+   
+    
     // Ищем пользователя по email
     const user = await User.findOne({ email });
+
     
     if (!user) {
       return res.status(401).json({

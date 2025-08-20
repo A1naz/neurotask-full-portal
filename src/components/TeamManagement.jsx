@@ -11,6 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import axios from 'axios'; // Added axios import
+import { toast } from 'react-toastify'; // Added toast import
 
 
 import { PlusCircle, Edit, Trash2, MoreHorizontal } from 'lucide-react';
@@ -34,13 +36,13 @@ const TeamManagement = () => {
     email: ''
   });
   
-  const [availableMenuItems, setAvailableMenuItems] = useState([]);
+  const [availablePermissions, setAvailablePermissions] = useState([]);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [tempPermissions, setTempPermissions] = useState([]);
 
   useEffect(() => {
     loadEmployees();
-    loadAvailableMenuItems();
+    loadAvailablePermissions();
   }, []);
 
   const loadEmployees = async () => {
@@ -59,26 +61,22 @@ const TeamManagement = () => {
       setLoading(false);
     }
   };
-  
-  const loadAvailableMenuItems = async () => {
+
+  // Новая функция для загрузки разрешений
+  const loadAvailablePermissions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/menu`, { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        const flattenedItems = [];
-        data.menuItems.forEach(item => {
-          if (item.id === 'team') return; // Сотрудникам нельзя дать доступ к вкладке Команда
-          flattenedItems.push({ value: item.id, label: item.label });
-          if (item.children) {
-            item.children.forEach(child => {
-              flattenedItems.push({ value: child.id, label: `↳ ${child.label}` });
-            });
-          }
-        });
-        setAvailableMenuItems(flattenedItems);
+      const response = await axios.get('/api/permissions');
+      if (response.data.success) {
+        // Преобразуем для использования в Checkbox
+        const permissions = response.data.permissions.map(p => ({
+          value: p.id,
+          label: p.label
+        }));
+        setAvailablePermissions(permissions);
       }
-    } catch (err) {
-      console.error("Failed to load menu items", err);
+    } catch (error) {
+      console.error("Ошибка загрузки разрешений:", error);
+      toast.error('Не удалось загрузить список разрешений.');
     }
   };
 
@@ -274,7 +272,7 @@ const TeamManagement = () => {
           </DialogHeader>
           <ScrollArea className="h-72 w-full rounded-md border p-4">
             <div className="space-y-2">
-              {availableMenuItems.map((item) => (
+              {availablePermissions.map((item) => (
                 <div key={item.value} className="flex items-center space-x-2">
                   <Checkbox
                     id={`perm-${item.value}`}

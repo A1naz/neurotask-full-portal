@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requirePermission } = require('../middleware/auth');
 
 // Импортируем константы из утилит
 const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils');
 
 // Получить AI настройки пользователя
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('ai-settings'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -63,7 +63,7 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // Обновить AI настройки пользователя
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requirePermission('ai-settings'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const updateData = req.body;
@@ -98,7 +98,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // Обновить конкретную настройку AI
-router.patch('/:setting', requireAuth, async (req, res) => {
+router.patch('/:setting', requireAuth, requirePermission('ai-settings'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { setting } = req.params;

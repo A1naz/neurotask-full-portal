@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requirePermission } = require('../middleware/auth');
 
 // Импортируем константы из утилит
 const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY, BALANCE_SERVICE_URL, BALANCE_SERVICE_API_KEY } = require('../utils');
 
 // Получить активный системный промпт
-router.get('/system-prompt/active', requireAuth, async (req, res) => {
+router.get('/system-prompt/active', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -39,7 +39,7 @@ router.get('/system-prompt/active', requireAuth, async (req, res) => {
 });
 
 // Получить пользовательский промпт
-router.get('/user/custom-prompt', requireAuth, async (req, res) => {
+router.get('/user/custom-prompt', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -71,7 +71,7 @@ router.get('/user/custom-prompt', requireAuth, async (req, res) => {
 });
 
 // Обновить пользовательский промпт
-router.post('/user/custom-prompt', requireAuth, async (req, res) => {
+router.post('/user/custom-prompt', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { customPrompt } = req.body;
@@ -103,7 +103,7 @@ router.post('/user/custom-prompt', requireAuth, async (req, res) => {
 });
 
 // Получить историю чата для конкретного провайдера
-router.get('/history/:provider', requireAuth, async (req, res) => {
+router.get('/history/:provider', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { provider } = req.params;
@@ -146,7 +146,7 @@ router.get('/history/:provider', requireAuth, async (req, res) => {
 });
 
 // Очистить всю историю мульти-чата
-router.delete('/history', requireAuth, async (req, res) => {
+router.delete('/history', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -179,7 +179,7 @@ router.delete('/history', requireAuth, async (req, res) => {
 });
 
 // Очистить историю чата для конкретного провайдера
-router.delete('/history/:provider', requireAuth, async (req, res) => {
+router.delete('/history/:provider', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { provider } = req.params;
@@ -212,7 +212,7 @@ router.delete('/history/:provider', requireAuth, async (req, res) => {
 });
 
 // Отправить сообщение конкретному провайдеру
-router.post('/:provider', requireAuth, async (req, res) => {
+router.post('/:provider', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { provider } = req.params;
@@ -365,7 +365,7 @@ router.post('/:provider', requireAuth, async (req, res) => {
 });
 
 // Получить все провайдеры
-router.get('/providers', requireAuth, async (req, res) => {
+router.get('/providers', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -402,7 +402,7 @@ router.get('/providers', requireAuth, async (req, res) => {
 });
 
 // Получить информацию о конкретном провайдере
-router.get('/provider/:provider', requireAuth, async (req, res) => {
+router.get('/provider/:provider', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { provider } = req.params;
@@ -436,7 +436,7 @@ router.get('/provider/:provider', requireAuth, async (req, res) => {
 });
 
 // Получить все провайдеры с детальной информацией
-router.get('/all-providers', requireAuth, async (req, res) => {
+router.get('/all-providers', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -479,7 +479,7 @@ router.get('/all-providers', requireAuth, async (req, res) => {
 });
 
 // Получить общую историю чата
-router.get('/history', requireAuth, async (req, res) => {
+router.get('/history', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { page = 1, limit = 20, provider = null } = req.query;

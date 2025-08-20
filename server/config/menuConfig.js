@@ -1,113 +1,187 @@
-const menuItems = [
+const allMenuItems = [
   {
-    id: 'assistant',
+    id: 'dashboard',
     label: 'Ассистент',
-    iconName: 'MessageSquare',
+    iconName: 'Home',
     path: '/assistant',
-    description: 'Telegram календарь бот'
+    description: 'Обзор ключевых метрик и быстрый доступ к функциям',
+    locations: ['sidebar'],
   },
   {
     id: 'multi-chat',
     label: 'Мульти-чат AI',
-    iconName: 'Sparkles',
+    iconName: 'MessageSquare',
     path: '/assistant/multi-chat',
-    description: 'Отправка запросов во все AI провайдеры'
+    description: 'Одновременное общение с несколькими AI-моделями',
+    locations: ['sidebar'],
   },
   {
     id: 'tasks',
     label: 'Задачи',
-    iconName: 'CheckSquare',
+    iconName: 'ListChecks',
     path: '/assistant/tasks',
-    description: 'Управление задачами и проектами'
-  },
-  {
-    id: 'generations',
-    label: 'Генерации',
-    iconName: 'Wand2',
-    path: '/generations',
-    description: 'AI генерация медиаконтента',
-    children: [
-      {
-        id: 'video',
-        label: 'Видео',
-        iconName: 'Video',
-        path: '/generations/video',
-        description: 'Генерация видео контента'
-      },
-      {
-        id: 'images',
-        label: 'Изображения',
-        iconName: 'Image',
-        path: '/generations/images',
-        description: 'Генерация изображений'
-      },
-      {
-        id: 'audio',
-        label: 'Аудио',
-        iconName: 'Music',
-        path: '/generations/audio',
-        description: 'Генерация аудио контента'
-      }
-    ]
+    description: 'Управление задачами и проектами',
+    locations: ['sidebar'],
   },
   {
     id: 'agents',
     label: 'Агенты',
     iconName: 'Users',
     path: '/agents',
-    description: 'AI агенты для различных задач',
+    description: 'Управление AI-агентами для автоматизации задач',
+    locations: ['sidebar'],
     children: [
       {
         id: 'content-factory',
         label: 'Контент-завод',
         iconName: 'FileText',
         path: '/agents/content-factory',
-        description: 'Автоматическая генерация и публикация контента'
+        description: 'Автоматическая генерация и публикация контента',
+        locations: ['sidebar'],
       },
       {
         id: 'marketing',
         label: 'Маркетинг',
         iconName: 'TrendingUp',
         path: '/agents/marketing',
-        description: 'Маркетинговые агенты'
+        description: 'Маркетинговые агенты',
+        locations: ['sidebar'],
       },
       {
         id: 'smm',
         label: 'SMM',
         iconName: 'Share2',
         path: '/agents/smm',
-        description: 'SMM агенты'
+        description: 'SMM агенты',
+        locations: ['sidebar'],
       },
       {
         id: 'targetologist',
         label: 'Таргетолог',
         iconName: 'Target',
         path: '/agents/targetologist',
-        description: 'Таргетированная реклама'
+        description: 'Таргетированная реклама',
+        locations: ['sidebar'],
       },
       {
         id: 'directologist',
         label: 'Директолог',
         iconName: 'Megaphone',
         path: '/agents/directologist',
-        description: 'Яндекс.Директ агенты'
+        description: 'Яндекс.Директ агенты',
+        locations: ['sidebar'],
       },
       {
-        id: 'sales',
-        label: 'Продажи',
-        iconName: 'ShoppingCart',
+        id: 'sales-agent',
+        label: 'Агент по продажам',
+        iconName: 'Phone',
         path: '/agents/sales',
-        description: 'Агенты продаж'
+        description: 'Автоматизация процессов продаж и взаимодействия с клиентами',
+        locations: ['sidebar'],
       },
       {
         id: 'support',
         label: 'Тех. поддержка',
         iconName: 'Headphones',
         path: '/agents/support',
-        description: 'Техническая поддержка'
+        description: 'Техническая поддержка',
+        locations: ['sidebar'],
       }
     ]
-  }
+  },
+  {
+    id: 'generations',
+    label: 'Генерации',
+    iconName: 'Sparkles',
+    path: '/generations',
+    description: 'Создание медиа-контента с помощью AI',
+    locations: ['sidebar'],
+    children: [
+      {
+        id: 'video-generation',
+        label: 'Генерация видео',
+        iconName: 'Video',
+        path: '/generations/video',
+        description: 'Создание видео-роликов по текстовому описанию',
+        locations: ['sidebar'],
+      },
+      {
+        id: 'image-generation',
+        label: 'Генерация изображений',
+        iconName: 'Image',
+        path: '/generations/images',
+        description: 'Создание уникальных изображений с помощью AI',
+        locations: ['sidebar'],
+      },
+      {
+        id: 'audio-generation',
+        label: 'Генерация аудио',
+        iconName: 'Music',
+        path: '/generations/audio',
+        description: 'Создание музыки и звуковых эффектов',
+        locations: ['sidebar'],
+      },
+    ],
+  },
+
+  // {
+  //   id: 'bot-management',
+  //   label: 'Управление ботом',
+  //   iconName: 'Bot',
+  //   path: '/assistant/bot-management',
+  //   description: 'Настройка и управление вашим Telegram ботом',
+  //   locations: ['sidebar'],
+  // },
+  // {
+  //   id: 'calendar-integration',
+  //   label: 'Интеграция с календарем',
+  //   iconName: 'Calendar',
+  //   path: '/assistant/calendar-integration',
+  //   description: 'Синхронизация с Google Calendar для управления событиями',
+  //   locations: ['sidebar'],
+  // },
+  // {
+  //   id: 'finances',
+  //   label: 'Финансы',
+  //   iconName: 'Landmark',
+  //   path: '/finances',
+  //   description: 'Управление балансом и тарифами',
+  //   locations: ['sidebar'],
+  //   children: [
+  //     {
+  //       id: 'token-history',
+  //       label: 'История токенов',
+  //       iconName: 'History',
+  //       path: '/assistant/token-history',
+  //       description: 'Просмотр истории пополнений и списаний токенов',
+  //       locations: ['sidebar', 'profile'],
+  //     },
+  //   ],
+  // },
+  {
+    id: 'ai-settings',
+    label: 'История токенов',
+    iconName: 'Cpu',
+    path: '/assistant/token-history',
+    description: 'История пополнений и списаний токенов',
+    locations: ['profile'],
+  },
+  {
+    id: 'ai-settings',
+    label: 'Настройки AI',
+    iconName: 'Cpu',
+    path: '/assistant/ai-settings',
+    description: 'Управление AI провайдерами и ключами',
+    locations: ['profile'],
+  },
+  {
+    id: 'user-settings',
+    label: 'Настройки профиля',
+    iconName: 'Settings',
+    path: '/assistant/user-settings',
+    description: 'Управление личными данными и настройками аккаунта',
+    locations: ['profile'],
+  },
 ];
 
-module.exports = menuItems;
+module.exports = { allMenuItems };

@@ -214,6 +214,7 @@ app.use('/api/api-keys', require('./routes/api-keys'));
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/multi-chat', require('./routes/multi-chat'));
 app.use('/api/menu', require('./routes/menu')); // Подключаем новый роут
+app.use('/api/permissions', require('./routes/permissions'));
 
 // 🔍 МАРШРУТЫ ДЛЯ SELECTED-PROVIDERS (прокси к database-service)
 app.use('/api/selected-providers', require('./routes/selected-providers'));

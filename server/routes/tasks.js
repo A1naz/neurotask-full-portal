@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requirePermission } = require('../middleware/auth');
 
 // Импортируем константы из утилит
 const utils = require('../utils');
 const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = utils;
 
 // Получить задачи пользователя
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { status, priority, assignee, project, limit = 50, offset = 0 } = req.query;
@@ -29,7 +29,7 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // Создать задачу
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const taskData = req.body;
     const createResponse = await axios.post(`${DATABASE_SERVICE_URL}/api/tasks`, {
@@ -50,7 +50,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // Получить задачу по ID
-router.get('/:taskId', requireAuth, async (req, res) => {
+router.get('/:taskId', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { taskId } = req.params;
     
@@ -69,7 +69,7 @@ router.get('/:taskId', requireAuth, async (req, res) => {
 });
 
 // Обновить задачу
-router.put('/:taskId', requireAuth, async (req, res) => {
+router.put('/:taskId', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { taskId } = req.params;
     const updateData = req.body;
@@ -89,7 +89,7 @@ router.put('/:taskId', requireAuth, async (req, res) => {
 });
 
 // Удалить задачу
-router.delete('/:taskId', requireAuth, async (req, res) => {
+router.delete('/:taskId', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { taskId } = req.params;
     
@@ -108,7 +108,7 @@ router.delete('/:taskId', requireAuth, async (req, res) => {
 });
 
 // Добавить комментарий к задаче
-router.post('/:taskId/comments', requireAuth, async (req, res) => {
+router.post('/:taskId/comments', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { taskId } = req.params;
     const { content, attachments = [] } = req.body;
@@ -139,7 +139,7 @@ router.post('/:taskId/comments', requireAuth, async (req, res) => {
 });
 
 // Изменить статус задачи
-router.patch('/:taskId/status', requireAuth, async (req, res) => {
+router.patch('/:taskId/status', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { taskId } = req.params;
     const { status } = req.body;
@@ -169,7 +169,7 @@ router.patch('/:taskId/status', requireAuth, async (req, res) => {
 });
 
 // Назначить исполнителя задачи
-router.patch('/:taskId/assign', requireAuth, async (req, res) => {
+router.patch('/:taskId/assign', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { taskId } = req.params;
     const { assigneeId } = req.body;
@@ -199,7 +199,7 @@ router.patch('/:taskId/assign', requireAuth, async (req, res) => {
 });
 
 // Получить статистику задач по проекту
-router.get('/project/:project/stats', requireAuth, async (req, res) => {
+router.get('/project/:project/stats', requireAuth, requirePermission('tasks'), async (req, res) => {
   try {
     const { project } = req.params;
     

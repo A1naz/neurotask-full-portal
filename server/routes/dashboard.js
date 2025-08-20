@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requirePermission } = require('../middleware/auth');
 
 // Импортируем константы из утилит
 const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils');
 
 // Получить данные дашборда
-router.get('/data', requireAuth, async (req, res) => {
+router.get('/data', requireAuth, requirePermission('dashboard'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -110,7 +110,7 @@ router.get('/data', requireAuth, async (req, res) => {
 });
 
 // Получить статистику бота
-router.get('/bot-stats', requireAuth, async (req, res) => {
+router.get('/bot-stats', requireAuth, requirePermission('dashboard'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -132,7 +132,7 @@ router.get('/bot-stats', requireAuth, async (req, res) => {
 });
 
 // Получить токены для интеграций
-router.get('/tokens', requireAuth, async (req, res) => {
+router.get('/tokens', requireAuth, requirePermission('dashboard'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -154,7 +154,7 @@ router.get('/tokens', requireAuth, async (req, res) => {
 });
 
 // Получить токен Telegram бота
-router.get('/tokens/telegramBotToken', requireAuth, async (req, res) => {
+router.get('/tokens/telegramBotToken', requireAuth, requirePermission('dashboard'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -172,7 +172,7 @@ router.get('/tokens/telegramBotToken', requireAuth, async (req, res) => {
 });
 
 // Получить Google Client ID
-router.get('/tokens/googleClientId', requireAuth, async (req, res) => {
+router.get('/tokens/googleClientId', requireAuth, requirePermission('dashboard'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -190,7 +190,7 @@ router.get('/tokens/googleClientId', requireAuth, async (req, res) => {
 });
 
 // Получить настройки дашборда
-router.get('/settings', requireAuth, async (req, res) => {
+router.get('/settings', requireAuth, requirePermission('dashboard'), async (req, res) => {
   try {
     const userId = req.session.userId;
     

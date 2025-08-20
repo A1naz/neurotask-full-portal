@@ -1,4 +1,7 @@
 const crypto = require('crypto');
+const axios = require('axios');
+const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils');
+
 
 /**
  * Middleware для проверки аутентификации пользователя
@@ -158,6 +161,49 @@ const rateLimit = (maxRequests = 100, windowMs = 15 * 60 * 1000) => {
   };
 };
 
+/**
+ * Middleware для проверки прав доступа к разделу
+ */
+const requirePermission = (permissionId) => {
+  return async (req, res, next) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    try {
+      // Получаем данные пользователя из database-service
+      const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${req.session.userId}`, {
+        headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
+      });
+
+      if (!userResponse.data.success) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const user = userResponse.data.user;
+
+      
+      // Владельцу можно все
+      if (user.isTeamOwner) {
+        return next();
+      }
+
+      // Проверяем наличие необходимого разрешения
+      if (user.permissions && user.permissions.includes(permissionId)) {
+        return next();
+      }
+
+      // Если ни одно из условий не выполнено, доступ запрещен
+      return res.status(403).json({ message: 'Access Denied: You do not have the required permission.' });
+
+    } catch (error) {
+      console.error('Permission check error:', error.message);
+      return res.status(500).json({ message: 'Internal server error during permission check.' });
+    }
+  };
+};
+
+
 module.exports = {
   requireAuth,
   generateCSRFToken,
@@ -166,5 +212,6 @@ module.exports = {
   requireRole,
   logRequest,
   errorHandler,
-  rateLimit
+  rateLimit,
+  requirePermission,
 };

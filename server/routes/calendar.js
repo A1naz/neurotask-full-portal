@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requirePermission } = require('../middleware/auth');
 
 // Импортируем константы из утилит
 const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils');
 
 // Получить статус аутентификации календаря
-router.get('/auth/status', requireAuth, async (req, res) => {
+router.get('/auth/status', requireAuth, requirePermission('calendar-integration'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -26,7 +26,7 @@ router.get('/auth/status', requireAuth, async (req, res) => {
 });
 
 // Получить URL для аутентификации
-router.get('/auth/url', requireAuth, async (req, res) => {
+router.get('/auth/url', requireAuth, requirePermission('calendar-integration'), async (req, res) => {
   try {
     // Пока возвращаем заглушку
     res.json({
@@ -43,7 +43,7 @@ router.get('/auth/url', requireAuth, async (req, res) => {
 });
 
 // Получить события календаря
-router.get('/events', requireAuth, async (req, res) => {
+router.get('/events', requireAuth, requirePermission('calendar-integration'), async (req, res) => {
   try {
     const { timeMin, timeMax, maxResults = 10 } = req.query;
     
@@ -62,7 +62,7 @@ router.get('/events', requireAuth, async (req, res) => {
 });
 
 // Тест интеграции с календарем
-router.post('/test', requireAuth, async (req, res) => {
+router.post('/test', requireAuth, requirePermission('calendar-integration'), async (req, res) => {
   try {
     // Пока возвращаем заглушку
     res.json({

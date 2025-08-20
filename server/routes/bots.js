@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requirePermission } = require('../middleware/auth');
 
 // Импортируем константы и функции из утилит
 const utils = require('../utils');
@@ -14,7 +14,7 @@ const {
 } = utils;
 
 // Получить Telegram бота пользователя
-router.get('/telegram', requireAuth, async (req, res) => {
+router.get('/telegram', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -41,7 +41,7 @@ router.get('/telegram', requireAuth, async (req, res) => {
 });
 
 // Создать или обновить Telegram бота
-router.post('/telegram', requireAuth, async (req, res) => {
+router.post('/telegram', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { token, settings = {} } = req.body;
@@ -104,7 +104,7 @@ router.post('/telegram', requireAuth, async (req, res) => {
 });
 
 // Обновить настройки Telegram бота
-router.put('/telegram', requireAuth, async (req, res) => {
+router.put('/telegram', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const updateData = req.body;
@@ -130,7 +130,7 @@ router.put('/telegram', requireAuth, async (req, res) => {
 });
 
 // Удалить Telegram бота
-router.delete('/telegram', requireAuth, async (req, res) => {
+router.delete('/telegram', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -152,7 +152,7 @@ router.delete('/telegram', requireAuth, async (req, res) => {
 });
 
 // Активировать/деактивировать бота
-router.patch('/telegram/status', requireAuth, async (req, res) => {
+router.patch('/telegram/status', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { isActive } = req.body;
@@ -185,7 +185,7 @@ router.patch('/telegram/status', requireAuth, async (req, res) => {
 });
 
 // Получить статистику бота
-router.get('/telegram/stats', requireAuth, async (req, res) => {
+router.get('/telegram/stats', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     
@@ -204,7 +204,7 @@ router.get('/telegram/stats', requireAuth, async (req, res) => {
 });
 
 // Обновить название компании бота
-router.put('/telegram/company-name', requireAuth, async (req, res) => {
+router.put('/telegram/company-name', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { companyName } = req.body;
@@ -237,7 +237,7 @@ router.put('/telegram/company-name', requireAuth, async (req, res) => {
 });
 
 // Получить настройки Google Calendar
-router.get('/telegram/google-calendar', requireAuth, async (req, res) => {
+router.get('/telegram/google-calendar', requireAuth, requirePermission('bot-management'), async (req, res) => {
   try {
     const userId = req.session.userId;
     

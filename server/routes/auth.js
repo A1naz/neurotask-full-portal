@@ -399,7 +399,7 @@ router.get('/me', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      user: toPublicJSON(user)
+      user: user // Отправляем полный объект пользователя
     });
 
   } catch (error) {

@@ -26,7 +26,14 @@ import {
   Video,
   Image,
   Music,
-  CheckSquare
+  CheckSquare,
+  Home, // Добавим недостающие
+  ListChecks,
+  Calendar,
+  Landmark,
+  History,
+  Cpu,
+  Settings
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton'; // Импортируем Skeleton
 import {
@@ -37,6 +44,8 @@ import {
 } from '@/components/ui/custom-dropdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenBalance } from '@/contexts/TokenBalanceContext';
+import { cn } from "@/lib/utils";
+import ProfileDropdown from './ProfileDropdown'; // Импортируем новый компонент
 
 // Маппинг имен иконок на компоненты иконок
 const iconComponents = {
@@ -55,11 +64,20 @@ const iconComponents = {
   Megaphone,
   ShoppingCart,
   Headphones,
+  Home, // Добавим недостающие
+  ListChecks,
+  Bot,
+  Calendar,
+  Landmark,
+  History,
+  Cpu,
+  Settings
 };
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState([]);
+  const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
+  const [profileMenuItems, setProfileMenuItems] = useState([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [menuError, setMenuError] = useState(null);
   
@@ -74,7 +92,7 @@ const Layout = ({ children }) => {
     return saved !== null ? JSON.parse(saved) : true; // По умолчанию развернуто
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const { user, logout, API_BASE, csrfToken } = useAuth();
+  const { user, logout, API_BASE, csrfToken, setAllowedRoutes } = useAuth();
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,16 +117,36 @@ const Layout = ({ children }) => {
         const data = await response.json();
         
         if (data.success) {
-          // Преобразуем iconName в реальные компоненты иконок
-          const transformedMenuItems = data.menuItems.map(item => ({
-            ...item,
-            icon: iconComponents[item.iconName],
-            children: item.children ? item.children.map(child => ({
-              ...child,
-              icon: iconComponents[child.iconName],
-            })) : [],
-          }));
-          setMenuItems(transformedMenuItems);
+          // Функция для добавления иконок к пунктам меню
+          const mapIcons = (items) => {
+            return items.map(item => ({
+              ...item,
+              icon: iconComponents[item.iconName],
+              children: item.children ? mapIcons(item.children) : [],
+            }));
+          };
+          
+          setSidebarMenuItems(mapIcons(data.sidebarMenuItems));
+          setProfileMenuItems(mapIcons(data.profileMenuItems));
+
+          // Рекурсивно собираем все доступные пути для ProtectedRoute
+          const getAllPaths = (items) => {
+            let paths = [];
+            items.forEach(item => {
+              if (item.path) {
+                paths.push(item.path);
+              }
+              if (item.children) {
+                paths = paths.concat(getAllPaths(item.children));
+              }
+            });
+            return paths;
+          };
+          const sidebarPaths = getAllPaths(data.sidebarMenuItems);
+          const profilePaths = getAllPaths(data.profileMenuItems);
+          // Объединяем и удаляем дубликаты
+          setAllowedRoutes([...new Set([...sidebarPaths, ...profilePaths])]);
+
         } else {
           throw new Error(data.message || 'Ошибка при получении меню.');
         }
@@ -120,7 +158,7 @@ const Layout = ({ children }) => {
     };
 
     fetchMenuItems();
-  }, [user, API_BASE]);
+  }, [user, API_BASE, setAllowedRoutes]);
 
   // Загрузить настройки интерфейса из базы данных
   const loadInterfaceSettings = async () => {
@@ -236,7 +274,7 @@ const Layout = ({ children }) => {
       );
     }
 
-    return menuItems.map((item) => {
+    return sidebarMenuItems.map((item) => { // Используем sidebarMenuItems
       const Icon = item.icon;
       const hasChildren = item.children && item.children.length > 0;
       const isActive = isActiveRoute(item.path);
@@ -390,8 +428,14 @@ const Layout = ({ children }) => {
 
           {/* User Profile Section - Fixed at bottom */}
           <div className="border-t bg-gray-50 p-4 mt-auto sticky bottom-0 z-10">
-            <CustomDropdown
-              position="top"
+            <ProfileDropdown
+              direction="up"
+              user={user}
+              tokenBalance={tokenBalance}
+              profileMenuItems={profileMenuItems}
+              isLoading={isLoadingMenu}
+              error={menuError}
+              onLogout={handleLogout}
               trigger={
                 <Button variant="ghost" className="w-full justify-start p-3 hover:bg-white transition-colors group">
                   <div className="flex items-center w-full">
@@ -410,96 +454,7 @@ const Layout = ({ children }) => {
                   </div>
                 </Button>
               }
-            >
-              <DropdownLabel>
-                <div className="flex items-center">
-                  <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{user?.username}</p>
-                    <p className="text-xs text-gray-500">{user?.email}</p>
-                  </div>
-                </div>
-              </DropdownLabel>
-              <DropdownSeparator />
-              
-              {/* Token Balance Section */}
-              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 mx-2 rounded-md border border-blue-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Баланс токенов</span>
-                    <div className="text-xs text-gray-500">Доступно для использования</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-blue-600">
-                      {tokenBalance.toLocaleString()}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => navigate('/assistant/token-history')}
-                      className="h-6 w-6 p-0 hover:bg-blue-100 rounded-full"
-                      title="Пополнить баланс"
-                    >
-                      <Plus className="h-3 w-3 text-blue-600" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <DropdownSeparator />
-              
-              {/* Quick Actions */}
-              <DropdownItem onClick={() => navigate('/assistant/token-history')}>
-                <Wallet className="mr-3 h-4 w-4 text-green-600" />
-                <div>
-                  <div className="font-medium">История токенов</div>
-                  <div className="text-xs text-gray-500">Пополнения и списания</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownItem onClick={() => navigate('/assistant/ai-settings')}>
-                <Bot className="mr-3 h-4 w-4 text-purple-600" />
-                <div>
-                  <div className="font-medium">Настройки AI</div>
-                  <div className="text-xs text-gray-500">API ключи и провайдеры</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownSeparator />
-              
-              {/* Team Management */}
-              <DropdownItem onClick={() => navigate('/teams')}>
-                <Users className="mr-3 h-4 w-4 text-indigo-600" />
-                <div>
-                  <div className="font-medium">Управление командой</div>
-                  <div className="text-xs text-gray-500">Участники и настройки</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownSeparator />
-              
-              {/* Settings */}
-              <DropdownItem onClick={() => navigate('/assistant/user-settings')}>
-                <Cog className="mr-3 h-4 w-4 text-gray-600" />
-                <div>
-                  <div className="font-medium">Настройки профиля</div>
-                  <div className="text-xs text-gray-500">Личные данные</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownSeparator />
-              
-              {/* Logout */}
-              <DropdownItem onClick={handleLogout} className="text-red-600">
-                <LogOut className="mr-3 h-4 w-4" />
-                <div>
-                  <div className="font-medium">Выйти</div>
-                  <div className="text-xs text-gray-500">Завершить сессию</div>
-                </div>
-              </DropdownItem>
-            </CustomDropdown>
+            />
           </div>
         </div>
       </div>
@@ -533,7 +488,14 @@ const Layout = ({ children }) => {
               <span className="text-xs text-gray-500">токенов</span>
             </Button>
             
-            <CustomDropdown
+            <ProfileDropdown
+              direction="down"
+              user={user}
+              tokenBalance={tokenBalance}
+              profileMenuItems={profileMenuItems}
+              isLoading={isLoadingMenu}
+              error={menuError}
+              onLogout={handleLogout}
               trigger={
                 <Button
                   variant="ghost"
@@ -545,96 +507,7 @@ const Layout = ({ children }) => {
                   </div>
                 </Button>
               }
-            >
-              <DropdownLabel>
-                <div className="flex items-center">
-                  <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{user?.username}</p>
-                    <p className="text-xs text-gray-500">{user?.email}</p>
-                  </div>
-                </div>
-              </DropdownLabel>
-              <DropdownSeparator />
-              
-              {/* Token Balance Section */}
-              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 mx-2 rounded-md border border-blue-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Баланс токенов</span>
-                    <div className="text-xs text-gray-500">Доступно для использования</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-blue-600">
-                      {tokenBalance.toLocaleString()}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => navigate('/assistant/token-history')}
-                      className="h-6 w-6 p-0 hover:bg-blue-100 rounded-full"
-                      title="Пополнить баланс"
-                    >
-                      <Plus className="h-3 w-3 text-blue-600" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <DropdownSeparator />
-              
-              {/* Quick Actions */}
-              <DropdownItem onClick={() => navigate('/assistant/token-history')}>
-                <Wallet className="mr-3 h-4 w-4 text-green-600" />
-                <div>
-                  <div className="font-medium">История токенов</div>
-                  <div className="text-xs text-gray-500">Пополнения и списания</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownItem onClick={() => navigate('/assistant/ai-settings')}>
-                <Bot className="mr-3 h-4 w-4 text-purple-600" />
-                <div>
-                  <div className="font-medium">Настройки AI</div>
-                  <div className="text-xs text-gray-500">API ключи и провайдеры</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownSeparator />
-              
-              {/* Team Management */}
-              <DropdownItem onClick={() => navigate('/teams')}>
-                <Users className="mr-3 h-4 w-4 text-indigo-600" />
-                <div>
-                  <div className="font-medium">Управление командой</div>
-                  <div className="text-xs text-gray-500">Участники и настройки</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownSeparator />
-              
-              {/* Settings */}
-              <DropdownItem onClick={() => navigate('/assistant/user-settings')}>
-                <Cog className="mr-3 h-4 w-4 text-gray-600" />
-                <div>
-                  <div className="font-medium">Настройки профиля</div>
-                  <div className="text-xs text-gray-500">Личные данные</div>
-                </div>
-              </DropdownItem>
-              
-              <DropdownSeparator />
-              
-              {/* Logout */}
-              <DropdownItem onClick={handleLogout} className="text-red-600">
-                <LogOut className="mr-3 h-4 w-4" />
-                <div>
-                  <div className="font-medium">Выйти</div>
-                  <div className="text-xs text-gray-500">Завершить сессию</div>
-                </div>
-              </DropdownItem>
-            </CustomDropdown>
+            />
           </div>
         </header>
 

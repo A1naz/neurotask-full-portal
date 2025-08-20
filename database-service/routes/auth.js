@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { requireApiKey } = require('../middleware/auth');
+const crypto = require('crypto'); // Added for verification code generation
 
 // ===== AUTHENTICATION ENDPOINTS =====
 

@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [csrfToken, setCsrfToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tempUserData, setTempUserData] = useState(null);
+  const [allowedRoutes, setAllowedRoutes] = useState([]);
 
 // API base URL
 const API_BASE = (() => {
@@ -222,6 +223,7 @@ const API_BASE = (() => {
       setUser(null);
       setIsAuthenticated(false);
       setCsrfToken(null); // Clear CSRF token on logout
+      setAllowedRoutes([]); // Сбрасываем разрешенные маршруты при выходе
       debugCookies(); // Debug cookies after logout
     }
   };
@@ -290,6 +292,8 @@ const API_BASE = (() => {
     checkAuth,
     API_BASE,
     debugCookies, // Expose debug function
+    allowedRoutes,
+    setAllowedRoutes,
   };
 
   return (

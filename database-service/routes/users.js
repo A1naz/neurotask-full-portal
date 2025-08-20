@@ -157,7 +157,12 @@ router.get('/:userId/balance', requireApiKey, async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    
+    let user = await User.findById(userId);
+
+    if (user.teamId) {
+       user = await User.findById(user.teamId);
+    }
     
     if (!user) {
       return res.status(404).json({

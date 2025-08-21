@@ -186,9 +186,6 @@ app.use('/api/auth', require('./routes/auth'));
 // Utility Endpoints
 app.use('/', require('./routes/utility'));
 
-// AI Keys Endpoints
-app.use('/api/ai-keys', require('./routes/ai-keys'));
-
 // Обработка ошибок
 app.use((err, req, res, next) => {
   res.status(500).json({ 

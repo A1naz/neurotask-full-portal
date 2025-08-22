@@ -13,6 +13,12 @@ const envPath = path.join(__dirname, '.env');
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const telegramBotsRoutes = require('./routes/telegram-bots');
+const aiSettingsRoutes = require('./routes/ai-settings');
+const projectSettingsRoutes = require('./routes/project-settings');
+const selectedProvidersRoutes = require('./routes/selected-providers');
+const providerOrderRoutes = require('./routes/provider-order');
+
 const app = express();
 const PORT = process.env.DATABASE_SERVICE_PORT || 3012;
 
@@ -148,10 +154,10 @@ app.use(limiter);
 app.use('/api/multi-chat', require('./routes/multi-chat'));
 
 // AI Settings Endpoints
-app.use('/api/ai-settings', require('./routes/ai-settings'));
+app.use('/api/ai-settings', aiSettingsRoutes);
 
 // 🔍 Selected Providers Endpoints
-app.use('/api/selected-providers', require('./routes/selected-providers'));
+app.use('/api/selected-providers', selectedProvidersRoutes);
 
 // User Prompts Endpoints
 app.use('/api/user-prompts', require('./routes/user-prompts'));
@@ -172,10 +178,10 @@ app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/notifications', require('./routes/notifications'));
 
 // Project Settings Endpoints
-app.use('/api/settings/project', require('./routes/project-settings'));
+app.use('/api/settings/project', projectSettingsRoutes);
 
 // Telegram Bot Endpoints
-app.use('/api/telegram/bots', require('./routes/telegram-bots'));
+app.use('/api/telegram/bots', telegramBotsRoutes);
 
 // Chat History Endpoints
 app.use('/api/chat-history', require('./routes/chat-history'));
@@ -188,6 +194,9 @@ app.use('/', require('./routes/utility'));
 
 // AI Keys Endpoints
 app.use('/api/ai-keys', require('./routes/ai-keys'));
+
+// Provider Order Endpoints
+app.use('/api/provider-order', providerOrderRoutes);
 
 
 // Обработка ошибок

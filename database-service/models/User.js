@@ -72,6 +72,10 @@ const userSchema = new mongoose.Schema({
       generationsExpanded: {
         type: Boolean,
         default: true
+      },
+      providerOrder: {
+        type: [String],
+        default: []
       }
     }
   },

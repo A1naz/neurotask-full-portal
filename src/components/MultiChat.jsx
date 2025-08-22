@@ -18,6 +18,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragOverlay
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -310,6 +311,7 @@ const MultiChat = () => {
   const [responses, setResponses] = useState({});
   const [activeProviders, setActiveProviders] = useState([]);
   const [error, setError] = useState('');
+  const [activeId, setActiveId] = useState(null);
 
   const [customSystemPrompt, setCustomSystemPrompt] = useState(() => {
     const saved = localStorage.getItem('multichat_custom_system_prompt');
@@ -356,6 +358,15 @@ const MultiChat = () => {
   const [isClearingChats, setIsClearingChats] = useState(false);
   const scrollAreaRef = useRef(null);
   const chatRefs = useRef({});
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('multichat_expanded_providers', JSON.stringify(expandedProviders));
+  }, [expandedProviders]);
+
+  useEffect(() => {
+    localStorage.setItem('multichat_provider_sizes', JSON.stringify(providerSizes));
+  }, [providerSizes]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -372,10 +383,66 @@ const MultiChat = () => {
     }
   }, [csrfToken, user?._id]);
 
+  const scrollToBottom = (provider) => {
+    const chatRef = chatRefs.current[provider];
+    if (chatRef) {
+      setTimeout(() => {
+        chatRef.scrollTop = chatRef.scrollHeight;
+      }, 100);
+    }
+  };
+
+  const loadChatHistory = async (provider) => {
+    if (!csrfToken || !user?._id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/history/${provider}`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setChatHistories(prev => ({
+          ...prev,
+          [provider]: data.messages || []
+        }));
+        setTimeout(() => scrollToBottom(provider), 200);
+      }
+    } catch (error) {
+      console.error(`Failed to load chat history for ${provider}`, error);
+    }
+  };
+
+  const clearChatHistory = async (provider) => {
+    if (!csrfToken || !user?._id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/history/${provider}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id
+        },
+      });
+      if (response.ok) {
+        setChatHistories(prev => ({ ...prev, [provider]: [] }));
+      }
+    } catch (error) {
+      console.error(`Failed to clear chat history for ${provider}`, error);
+    }
+  };
+
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
   const handleDragEnd = (event) => {
     const {active, over} = event;
     
     if (!over) {
+      setActiveId(null);
       return;
     }
 
@@ -388,7 +455,55 @@ const MultiChat = () => {
         return newOrder;
       });
     }
+    setActiveId(null);
   }
+
+  const loadActiveProviders = async () => {
+    if (!csrfToken || !user?._id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/providers`, {
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': csrfToken, 'x-user-id': user._id }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const providers = data.activeProviders || [];
+        
+        // Use locally stored order if available
+        const savedOrder = localStorage.getItem('multichat_selected_providers');
+        if (savedOrder) {
+          try {
+            const orderedProviders = JSON.parse(savedOrder);
+            // Filter out any providers that are no longer active
+            const validOrderedProviders = orderedProviders.filter(p => providers.includes(p));
+            // Add any new active providers that were not in the saved order
+            const newProviders = providers.filter(p => !validOrderedProviders.includes(p));
+            const finalProviders = [...validOrderedProviders, ...newProviders];
+            setActiveProviders(finalProviders);
+            setSelectedProviders(finalProviders);
+          } catch (e) {
+            // If parsing fails, fall back to default
+            setActiveProviders(providers);
+            setSelectedProviders(providers);
+          }
+        } else {
+          setActiveProviders(providers);
+          setSelectedProviders(providers);
+        }
+        
+        const initialResponses = {};
+        providers.forEach(provider => {
+          initialResponses[provider] = { status: 'idle', content: '', error: '' };
+          loadChatHistory(provider);
+        });
+        setResponses(initialResponses);
+      } else {
+        setError('Ошибка загрузки активных провайдеров');
+      }
+    } catch (error) {
+      setError('Ошибка загрузки активных провайдеров');
+    }
+  };
 
   // Загружаем системный промпт из базы данных
   const loadSystemPrompt = async () => {
@@ -461,219 +576,6 @@ const MultiChat = () => {
         }
     } catch (error) {
       }
-  };
-
-  // Функция для прокрутки чата к концу
-  const scrollToBottom = (provider) => {
-    const chatRef = chatRefs.current[provider];
-    if (chatRef) {
-      setTimeout(() => {
-        chatRef.scrollTop = chatRef.scrollHeight;
-      }, 100);
-    }
-  };
-
-  // Загружаем историю чата для провайдера
-  const loadChatHistory = async (provider) => {
-    if (!csrfToken || !user?._id) {
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${API_BASE}/api/multi-chat/history/${provider}`, {
-        credentials: 'include',
-        headers: {
-          'X-CSRF-Token': csrfToken,
-          'x-user-id': user._id
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setChatHistories(prev => ({
-          ...prev,
-          [provider]: data.messages || []
-        }));
-        
-        // Прокручиваем к концу после загрузки истории
-        setTimeout(() => scrollToBottom(provider), 200);
-      }
-    } catch (error) {
-      }
-  };
-
-  // Очищаем историю чата для провайдера
-  const clearChatHistory = async (provider) => {
-    try {
-      if (!csrfToken || !user?._id) {
-        return;
-      }
-
-      const response = await fetch(`${API_BASE}/api/multi-chat/history/${provider}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'X-CSRF-Token': csrfToken,
-          'x-user-id': user._id
-        },
-      });
-
-      if (response.ok) {
-        setChatHistories(prev => ({
-          ...prev,
-          [provider]: []
-        }));
-      }
-    } catch (error) {
-      }
-  };
-
-  useEffect(() => {
-    if (autoScroll && scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  }, [responses, autoScroll]);
-
-  // Автоматическая прокрутка чатов к концу при изменении истории
-  useEffect(() => {
-    Object.keys(chatHistories).forEach(provider => {
-      if (chatHistories[provider] && chatHistories[provider].length > 0) {
-        scrollToBottom(provider);
-      }
-    });
-  }, [chatHistories]);
-
-  // Сохранение состояния свернутого блока
-  useEffect(() => {
-    localStorage.setItem('multichat_header_collapsed', JSON.stringify(isHeaderCollapsed));
-  }, [isHeaderCollapsed]);
-
-  // Сохранение размеров провайдеров
-  useEffect(() => {
-    localStorage.setItem('multichat_provider_sizes', JSON.stringify(providerSizes));
-  }, [providerSizes]);
-
-  // Сохранение состояния развернутых провайдеров
-  useEffect(() => {
-    localStorage.setItem('multichat_expanded_providers', JSON.stringify(expandedProviders));
-  }, [expandedProviders]);
-
-  useEffect(() => {
-    if (useCustomPrompt && customSystemPrompt.trim()) {
-      saveCustomPrompt(customSystemPrompt);
-    }
-  }, [customSystemPrompt, useCustomPrompt]);
-
-  useEffect(() => {
-    localStorage.setItem('multichat_use_custom_prompt', JSON.stringify(useCustomPrompt));
-  }, [useCustomPrompt]);
-
-  useEffect(() => {
-    localStorage.setItem('multichat_show_settings', JSON.stringify(showSettings));
-  }, [showSettings]);
-
-  useEffect(() => {
-    localStorage.setItem('multichat_auto_scroll', JSON.stringify(autoScroll));
-  }, [autoScroll]);
-
-  const loadActiveProviders = async () => {
-    if (!csrfToken || !user?._id) {
-      console.log('🔍 No CSRF token or user ID, skipping provider load');
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${API_BASE}/api/multi-chat/providers`, {
-        credentials: 'include',
-        headers: {
-          'X-CSRF-Token': csrfToken,
-          'x-user-id': user._id
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const providers = data.activeProviders || [];
-        setActiveProviders(providers);
-        
-        // 🔍 ВОССТАНАВЛИВАЕМ ВЫБРАННЫХ ПРОВАЙДЕРОВ ИЗ БД
-        try {
-          const selectedResponse = await fetch(`${API_BASE}/api/selected-providers/${user._id}`, {
-            credentials: 'include',
-            headers: {
-              'X-CSRF-Token': csrfToken,
-              'x-user-id': user._id,
-              'x-api-key': 'database-service-secure-api-key-2024'
-            }
-          });
-          
-          if (selectedResponse.ok) {
-            const selectedData = await selectedResponse.json();
-            const savedProviders = selectedData.selectedProviders || [];
-            
-            // Фильтруем только активные провайдеры
-            const validProviders = savedProviders.filter(p => providers.includes(p));
-            if (validProviders.length > 0) {
-              setSelectedProviders(validProviders);
-              // Сохраняем в localStorage для быстрого доступа
-              await saveSelectedProviders(validProviders);
-            } else {
-              // Если сохраненные провайдеры неактивны, выбираем все активные
-              setSelectedProviders(providers);
-              await saveSelectedProviders(providers);
-            }
-          } else {
-            // Если не удалось загрузить из БД, используем localStorage
-            const savedProviders = localStorage.getItem('multichat_selected_providers');
-            if (savedProviders) {
-              const parsedProviders = JSON.parse(savedProviders);
-              const validProviders = parsedProviders.filter(p => providers.includes(p));
-              if (validProviders.length > 0) {
-                setSelectedProviders(validProviders);
-              } else {
-                setSelectedProviders(providers);
-                await saveSelectedProviders(providers);
-              }
-            } else {
-              // Если нет сохраненных, выбираем все активные
-              setSelectedProviders(providers);
-              await saveSelectedProviders(providers);
-            }
-          }
-        } catch (error) {
-          // Fallback к localStorage
-          const savedProviders = localStorage.getItem('multichat_selected_providers');
-          if (savedProviders) {
-            const parsedProviders = JSON.parse(savedProviders);
-            const validProviders = parsedProviders.filter(p => providers.includes(p));
-            if (validProviders.length > 0) {
-              setSelectedProviders(validProviders);
-              console.log('🔍 Using valid providers from localStorage:', validProviders);
-            } else {
-              setSelectedProviders(validProviders);
-              await saveSelectedProviders(providers);
-            }
-          } else {
-            setSelectedProviders(providers);
-            await saveSelectedProviders(providers);
-          }
-        }
-        
-        // Инициализируем пустые ответы для каждого провайдера
-        const initialResponses = {};
-        providers.forEach(provider => {
-          initialResponses[provider] = { status: 'idle', content: '', error: '' };
-          // Загружаем историю чата для каждого провайдера
-          loadChatHistory(provider);
-        });
-        setResponses(initialResponses);
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
-        setError(errorData.message || 'Ошибка загрузки активных провайдеров');
-      }
-    } catch (error) {
-      setError('Ошибка загрузки активных провайдеров');
-    }
   };
 
   const sendToProvider = async (provider) => {
@@ -1418,6 +1320,7 @@ const MultiChat = () => {
                   <DndContext 
                     sensors={sensors}
                     collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                   >
                     <SortableContext 
@@ -1440,6 +1343,17 @@ const MultiChat = () => {
                         />
                       ))}
                     </SortableContext>
+                    <DragOverlay>
+                      {activeId ? (
+                        <ProviderCard 
+                          provider={activeId}
+                          response={responses[activeId]}
+                          history={chatHistories[activeId]}
+                          isExpanded={expandedProviders[activeId]}
+                          size={providerSizes[activeId]}
+                        />
+                      ) : null}
+                    </DragOverlay>
                   </DndContext>
                 </div>
              )}

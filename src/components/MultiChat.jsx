@@ -12,6 +12,22 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenBalance } from '@/contexts/TokenBalanceContext';
 import { 
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {CSS} from '@dnd-kit/utilities';
+import { 
   Send, 
   Loader2, 
   Bot, 
@@ -31,8 +47,260 @@ import {
   RotateCcw,
   ChevronUp,
   ChevronDown,
-  Plus
+  Plus,
+  GripVertical
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const ProviderCard = React.forwardRef(({ 
+  provider, 
+  response, 
+  history, 
+  onResend, 
+  onClearHistory, 
+  isLoading, 
+  isExpanded, 
+  onToggleExpand,
+  size = {},
+  onResizeStart,
+  chatRef,
+  dragHandleListeners,
+  ...props 
+}, ref) => {
+  const [showHistory, setShowHistory] = useState(true);
+
+  const getProviderIcon = (provider) => {
+    const icons = {
+      openai: '🤖',
+      gemini: '🌟',
+      xai: '🚀',
+      yandexgpt: '🔍',
+      gigachat: '💼',
+      anthropic: '🧠',
+      deepseek: '🔍'
+    };
+    return icons[provider] || '🤖';
+  };
+
+  const getProviderName = (provider) => {
+    const names = {
+      openai: 'OpenAI',
+      gemini: 'Google Gemini',
+      xai: 'xAI',
+      yandexgpt: 'Yandex GPT',
+      gigachat: 'GigaChat',
+      anthropic: 'Anthropic',
+      deepseek: 'DeepSeek'
+    };
+    return names[provider] || provider;
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'loading':
+        return <Loader2 className="h-4 w-4 animate-spin" />;
+      case 'success':
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      default:
+        return <MessageSquare className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'loading':
+        return 'bg-blue-50 border-blue-200';
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'error':
+        return 'bg-red-50 border-red-200';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
+  };
+
+  const copyResponse = (content) => {
+    navigator.clipboard.writeText(content);
+  };
+  
+  return (
+    <Card 
+      ref={ref}
+      {...props}
+      data-provider={provider}
+      className={`${getStatusColor(response?.status || 'idle')} relative flex-shrink-0 transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`}
+      style={{
+        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : '400px'),
+        height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : '500px'),
+        minWidth: isExpanded ? '100%' : '400px',
+        minHeight: isExpanded ? 'auto' : '400px',
+        maxHeight: isExpanded ? 'auto' : '800px',
+        order: isExpanded ? -1 : 0,
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        ...props.style
+      }}
+    >
+      <CardHeader className="pb-1 pt-2 px-3 !px-2 !gap-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span {...dragHandleListeners} className="cursor-grab touch-none">
+              <GripVertical size={18} className="text-gray-400" />
+            </span>
+            <span className="text-lg">{getProviderIcon(provider)}</span>
+            <span className="font-medium">{getProviderName(provider)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {getStatusIcon(response?.status || 'idle')}
+            <Badge variant="outline" className="text-xs">
+              {response?.status || 'idle'}
+            </Badge>
+            {size && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onResizeStart(provider)}
+                className="h-6 w-6 p-0 hover:bg-blue-50"
+                title="Сбросить размер"
+              >
+                <RotateCcw className="h-3 w-3" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleExpand}
+              className="h-6 w-6 p-0 hover:bg-blue-50"
+            >
+              {isExpanded ? (
+                <Minimize2 className="h-3 w-3" />
+              ) : (
+                <Maximize2 className="h-3 w-3" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0 pb-0 !px-2 flex flex-col flex-1 min-h-0">
+        {history && history.length > 0 && (
+          <div 
+            ref={chatRef}
+            className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-0" 
+            style={{ minHeight: '200px' }}
+          >
+            <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+              <span>История чата ({history.length} сообщений)</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClearHistory}
+                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
+              {history.map((msg, index) => (
+                <div key={index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-medium mt-1">
+                      {msg.role === 'user' ? '👤' : '🤖'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    {msg.role === 'assistant' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyResponse(msg.content)}
+                        className="h-6 w-6 p-0 ml-2"
+                        title="Копировать ответ"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {response?.status === 'loading' && (
+          <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Обработка запроса...</span>
+          </div>
+        )}
+        {response?.status === 'error' && response?.error && (
+          <Alert variant="destructive" className="py-2 mt-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">{response.error}</AlertDescription>
+            {response?.insufficientBalance && (
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => window.location.href = '/tokens'}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Пополнить баланс
+                </Button>
+                <span className="text-xs text-gray-500">
+                  Текущий баланс: {response?.currentBalance || 0} токенов
+                </span>
+              </div>
+            )}
+          </Alert>
+        )}
+      </CardContent>
+      {!isExpanded && (
+        <div 
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-nw-resize bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded-tl flex items-center justify-center z-10"
+          onMouseDown={(e) => onResizeStart(e, provider)}
+          title="Изменить размер"
+          style={{ transform: 'translate(50%, 50%)' }}
+        >
+          <div className="w-2 h-2 bg-gray-400 rounded-sm" />
+        </div>
+      )}
+    </Card>
+  );
+});
+
+const SortableProviderCard = ({ provider, ...props }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({id: provider});
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <ProviderCard 
+      ref={setNodeRef} 
+      style={style} 
+      provider={provider} 
+      dragHandleListeners={listeners}
+      {...attributes}
+      {...props}
+    />
+  );
+};
+
 
 const MultiChat = () => {
   const { API_BASE, csrfToken, user } = useAuth();
@@ -89,6 +357,13 @@ const MultiChat = () => {
   const scrollAreaRef = useRef(null);
   const chatRefs = useRef({});
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     if (csrfToken && user?._id) {
       loadActiveProviders();
@@ -96,6 +371,24 @@ const MultiChat = () => {
       loadCustomPrompt();
     }
   }, [csrfToken, user?._id]);
+
+  const handleDragEnd = (event) => {
+    const {active, over} = event;
+    
+    if (!over) {
+      return;
+    }
+
+    if (active.id !== over.id) {
+      setSelectedProviders((items) => {
+        const oldIndex = items.indexOf(active.id);
+        const newIndex = items.indexOf(over.id);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem('multichat_selected_providers', JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+  }
 
   // Загружаем системный промпт из базы данных
   const loadSystemPrompt = async () => {
@@ -646,7 +939,7 @@ const MultiChat = () => {
     });
   };
 
-  const toggleExpanded = (provider) => {
+  const toggleProviderExpand = (provider) => {
     setExpandedProviders(prev => ({
       ...prev,
       [provider]: !prev[provider]
@@ -1121,168 +1414,33 @@ const MultiChat = () => {
                  </CardContent>
                </Card>
              ) : (
-                                                                                               <div className="flex flex-wrap gap-4 h-full items-start">
-                    {selectedProviders.map(provider => {
-                      const size = providerSizes[provider] || {};
-                      const isExpanded = expandedProviders[provider];
-                      
-                      return (
-                                                                                                   <Card 
-                            key={provider} 
-                            data-provider={provider}
-                                                       className={`${getStatusColor(responses[provider]?.status || 'idle')} relative flex-shrink-0 transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`}
-                                                          style={{
-                                width: isExpanded ? '100%' : (size.width ? `${size.width}px` : '400px'),
-                                height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : '500px'),
-                                minWidth: isExpanded ? '100%' : '400px',
-                                minHeight: isExpanded ? 'auto' : '400px',
-                                maxHeight: isExpanded ? 'auto' : '800px',
-                                order: isExpanded ? -1 : 0,
-                                position: 'relative',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                flexShrink: 0
-                              }}
-                         >
-                                            <CardHeader className="pb-1 pt-2 px-3 !px-2 !gap-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{getProviderIcon(provider)}</span>
-                            <span className="font-medium">{getProviderName(provider)}</span>
-                          </div>
-                                                     <div className="flex items-center gap-2">
-                             {getStatusIcon(responses[provider]?.status || 'idle')}
-                             <Badge variant="outline" className="text-xs">
-                               {responses[provider]?.status || 'idle'}
-                             </Badge>
-                                                           {providerSizes[provider] && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => resetProviderSize(provider)}
-                                  className="h-6 w-6 p-0 hover:bg-blue-50"
-                                  title="Сбросить размер"
-                                >
-                                  <RotateCcw className="h-3 w-3" />
-                                </Button>
-                              )}
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => toggleExpanded(provider)}
-                               className="h-6 w-6 p-0 hover:bg-blue-50"
-                             >
-                               {expandedProviders[provider] ? (
-                                 <Minimize2 className="h-3 w-3" />
-                               ) : (
-                                 <Maximize2 className="h-3 w-3" />
-                               )}
-                             </Button>
-                           </div>
-                                                 </div>
-                       </CardHeader>
-                                                                                               <CardContent className="pt-0 pb-0 !px-2 flex flex-col flex-1 min-h-0">
-
-                                                                                                   {/* История чата */}
-                                                      {chatHistories[provider] && chatHistories[provider].length > 0 && (
-                              <div 
-                                ref={(el) => chatRefs.current[provider] = el}
-                                className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-0" 
-                                style={{ 
-                                  minHeight: '200px'
-                                }}
-                              >
-                             <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
-                               <span>История чата ({chatHistories[provider].length} сообщений)</span>
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 onClick={() => clearChatHistory(provider)}
-                                 className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                               >
-                                 <Trash2 className="h-3 w-3" />
-                               </Button>
-                             </div>
-                                                           <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
-                                {chatHistories[provider].map((msg, index) => (
-                                  <div key={index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
-                                    <div className="flex items-start gap-2">
-                                      <span className="text-xs font-medium mt-1">
-                                        {msg.role === 'user' ? '👤' : '🤖'}
-                                      </span>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          {new Date(msg.timestamp).toLocaleTimeString()}
-                                        </p>
-                                      </div>
-                                      {msg.role === 'assistant' && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => copyResponse(msg.content)}
-                                          className="h-6 w-6 p-0 ml-2"
-                                          title="Копировать ответ"
-                                        >
-                                          <Copy className="h-3 w-3" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                           </div>
-                         )}
-
-                                                   {/* Индикатор загрузки */}
-                          {responses[provider]?.status === 'loading' && (
-                            <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>Обработка запроса...</span>
-                            </div>
-                          )}
-                        
-                                                 {responses[provider]?.status === 'error' && responses[provider]?.error && (
-                           <Alert variant="destructive" className="py-2 mt-2">
-                             <AlertTriangle className="h-4 w-4" />
-                             <AlertDescription className="text-sm">{responses[provider].error}</AlertDescription>
-                             
-                             {/* 🔒 Кнопка пополнения баланса при ошибке недостаточного баланса */}
-                             {responses[provider]?.insufficientBalance && (
-                               <div className="mt-2 flex items-center gap-2">
-                                 <Button
-                                   size="sm"
-                                   onClick={() => window.location.href = '/tokens'}
-                                   className="bg-green-600 hover:bg-green-700 text-white"
-                                 >
-                                   <Plus className="h-3 w-3 mr-1" />
-                                   Пополнить баланс
-                                 </Button>
-                                 <span className="text-xs text-gray-500">
-                                   Текущий баланс: {responses[provider]?.currentBalance || 0} токенов
-                                 </span>
-                               </div>
-                             )}
-                           </Alert>
-                         )}
-                      </CardContent>
-
-                                             {/* Угол для изменения размера */}
-                       {!isExpanded && (
-                         <div 
-                           className="absolute bottom-0 right-0 w-6 h-6 cursor-nw-resize bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded-tl flex items-center justify-center z-10"
-                           onMouseDown={(e) => handleResizeStart(e, provider)}
-                           title="Изменить размер"
-                           style={{
-                             transform: 'translate(50%, 50%)'
-                           }}
-                         >
-                           <div className="w-2 h-2 bg-gray-400 rounded-sm" />
-                         </div>
-                       )}
-                    </Card>
-                   );
-                 })}
+                <div className="flex flex-wrap gap-4 h-full items-start">
+                  <DndContext 
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext 
+                      items={selectedProviders}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {selectedProviders.map(provider => (
+                        <SortableProviderCard 
+                          key={provider} 
+                          provider={provider}
+                          response={responses[provider]}
+                          history={chatHistories[provider]}
+                          onClearHistory={() => clearChatHistory(provider)}
+                          isLoading={loading && responses[provider]?.status === 'loading'}
+                          isExpanded={expandedProviders[provider]}
+                          onToggleExpand={() => toggleProviderExpand(provider)}
+                          size={providerSizes[provider]}
+                          onResizeStart={(e, p) => handleResizeStart(e, p)}
+                          chatRef={el => chatRefs.current[provider] = el}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
              )}
            </div>

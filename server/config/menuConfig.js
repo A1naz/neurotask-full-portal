@@ -159,7 +159,7 @@ const allMenuItems = [
   //   ],
   // },
   {
-    id: 'ai-settings',
+    id: 'token-history',
     label: 'История токенов',
     iconName: 'Cpu',
     path: '/assistant/token-history',

@@ -66,7 +66,7 @@ router.get('/:userId', requireApiKey, async (req, res) => {
       }
     };
     
-    console.log('🚀 Sending response:', JSON.stringify(responseData, null, 2));
+    // console.log('🚀 Sending response:', JSON.stringify(responseData, null, 2));
     
     res.json(responseData);
   } catch (error) {

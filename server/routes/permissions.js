@@ -22,6 +22,7 @@ router.get('/', requireAuth, (req, res) => {
   try {
     const allPermissions = getAllPermissionIds(allMenuItems);
     
+    console.log("🔍 Все разрешения:", allPermissions);
     // Удаляем "Команду", так как ее нельзя назначать
     const filteredPermissions = allPermissions.filter(p => p.id !== 'team');
 

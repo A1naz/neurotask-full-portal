@@ -6,9 +6,7 @@ const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils');
 /**
  * Middleware для проверки аутентификации пользователя
  */
-const requireAuth = (req, res, next) => {
-  console.log('🔍 Checking authentication for user:', req.session.userId);
-  
+const requireAuth = (req, res, next) => {  
   if (req.session.userId) {
     next();
   } else {
@@ -190,7 +188,10 @@ const requirePermission = (permissionId) => {
 
       // Проверяем наличие необходимого разрешения
       if (user.permissions && user.permissions.includes(permissionId)) {
+        console.log("🔍 🟢🟢🟢🟢🟢🟢🟢🟢🟢Пользователь имеет разрешение🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢");
         return next();
+      } else {
+        console.log("🔍 ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️Пользователь не имеет разрешения, ОШИБКА!!!!!!! Пользователь не имеет разрешения, Ошибка в проверке разрешений!!!!!!⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️");
       }
 
       // Если ни одно из условий не выполнено, доступ запрещен
@@ -198,6 +199,7 @@ const requirePermission = (permissionId) => {
 
     } catch (error) {
       console.error('Permission check error:', error.message);
+      console.log("🔍 ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️Пользователь не имеет разрешения, ОШИБКА!!!!!!! Пользователь не имеет разрешения, Ошибка в проверке разрешений!!!!!!⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️");
       return res.status(500).json({ message: 'Internal server error during permission check.' });
     }
   };

@@ -65,26 +65,12 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         aiResponse = `Провайдер ${provider} не настроен. Отсутствует переменная окружения ${provider.toUpperCase()}_SERVICE_URL`;
         success = false;
       } else {
-        // Получаем API ключ для провайдера из AIKeys
-        const apiKey = await AIKeys.findOne({
-          aiProvider: provider,
-          isActive: true,
-        })
-          .sort({
-            priority: -1,
-          })
-          .select(
-            "-_id -__v -createdAt -updatedAt -isActive -disabledUntil -priority -failCount"
-          );
-        console.log("🔍 API ключ для провайдера:", apiKey);
-
-        if (!apiKey) {
-          aiResponse = `API ключ для провайдера ${provider} не настроен`;
-          success = false;
-        } else {
+     
+      
+        console.log("Отправляем запрос к AI провайдеру")
           // Отправляем запрос к AI провайдеру
           const aiResponseData = await axios.post(
-            `${providerUrl}/api/chat`,
+            `${providerUrl}/api/ai/${provider}`,
             {
               message: message,
               systemPrompt:
@@ -94,15 +80,16 @@ router.post("/:provider", requireApiKey, async (req, res) => {
                     "Ты полезный ассистент. Отвечай на вопросы пользователя кратко и по делу.",
               provider: provider,
               context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
+              userId: userId,
             },
             {
               timeout: 30000,
               headers: {
                 "Content-Type": "application/json",
-                "x-api-key": apiKey,
               },
             }
           );
+          console.log("aiResponseData.data" + aiResponseData.data)
 
           if (aiResponseData.data?.success) {
             aiResponse =
@@ -115,7 +102,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             }`;
             success = false;
           }
-        }
+        
       }
     } catch (aiError) {
       aiResponse = `Ошибка связи с провайдером ${provider}: ${aiError.message}`;
@@ -124,6 +111,8 @@ router.post("/:provider", requireApiKey, async (req, res) => {
 
     // Добавляем ответ AI в историю
     await chatHistory.addMessage("assistant", aiResponse);
+
+    console.log("aiResponse", aiResponse)
 
     res.json({
       success: success,

@@ -1,0 +1,57 @@
+const express = require("express");
+const router = express.Router();
+const AIKeys = require("../models/AIKeys");
+const { requireApiKey } = require("../middleware/auth");
+
+// Получить кастомный промпт пользователя
+router.get("/:aiProvider", requireApiKey, async (req, res) => {
+  try {
+    const { aiProvider } = req.params;
+
+    if (aiProvider === "all") {
+      console.log("🔍 Получение всех API ключей");
+      const apiKeys = await AIKeys.find({
+        isActive: true,
+      })
+        .select(
+          "-_id -__v -createdAt -updatedAt -isActive -disabledUntil -priority -failCount -successCount"
+        );
+      res.json({
+        success: true,
+        apiKeys: apiKeys,
+      });
+      return;
+    }
+
+    const apiKey = await AIKeys.findOne({
+      aiProvider: aiProvider,
+      isActive: true,
+    })
+      .sort({
+        priority: -1,
+      })
+      .select(
+        "-_id -__v -createdAt -updatedAt -isActive -disabledUntil -priority -failCount -successCount"
+      );
+
+    console.log("🔍 API ключ для провайдера:", apiKey);
+    if (!apiKey) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "AI ключ не найден :((",
+      });
+    }
+
+    res.json({
+      success: true,
+      aiKey: apiKey,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "Ошибка получения AI ключа",
+    });
+  }
+});
+
+module.exports = router;

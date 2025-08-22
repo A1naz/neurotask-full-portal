@@ -44,7 +44,6 @@ router.get('/', requireAuth, async (req, res) => {
       }, []);
     };
     
-    console.log(user);
     if (user && user.isTeamOwner) {
       // Владелец видит все
       finalSidebarMenu = allMenuItems.filter(item => item.locations.includes('sidebar'));

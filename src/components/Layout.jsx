@@ -33,7 +33,10 @@ import {
   Landmark,
   History,
   Cpu,
-  Settings
+  Settings,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton'; // Импортируем Skeleton
 import {
@@ -80,6 +83,9 @@ const Layout = ({ children }) => {
   const [profileMenuItems, setProfileMenuItems] = useState([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [menuError, setMenuError] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => JSON.parse(localStorage.getItem('sidebar-collapsed')) || false
+  );
   
   const [agentsExpanded, setAgentsExpanded] = useState(() => {
     // Загружаем состояние из localStorage при инициализации
@@ -96,6 +102,10 @@ const Layout = ({ children }) => {
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   // Загрузка меню с сервера
   useEffect(() => {
@@ -288,48 +298,52 @@ const Layout = ({ children }) => {
                 {/* Основная кнопка группы */}
                 <Button
                   variant={isActive ? "default" : "ghost"}
-                  className={`flex-1 justify-start ${
+                  className={cn(
+                    "flex-1 justify-start",
                     isActive 
                       ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'hover:bg-blue-50'
-                  }`}
+                      : 'hover:bg-blue-50',
+                    isSidebarCollapsed && "px-2"
+                  )}
                   onClick={() => navigate(item.path)}
                 >
-                  {Icon && <Icon className="mr-3 h-5 w-5" />}
-                  {item.label}
+                  {Icon && <Icon className={cn("h-5 w-5", isSidebarCollapsed ? "mx-auto" : "mr-3")} />}
+                  {!isSidebarCollapsed && item.label}
                 </Button>
                 
                 {/* Кнопка разворачивания/сворачивания */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-blue-50"
-                  disabled={isSavingSettings}
-                  onClick={() => {
-                    // Обрабатываем изменение состояния для вкладки "Агенты"
-                    if (item.id === 'agents') {
-                      const newState = !agentsExpanded;
-                      setAgentsExpanded(newState);
-                      localStorage.setItem('agentsExpanded', JSON.stringify(newState));
-                      saveInterfaceSettings(newState, generationsExpanded);
-                    } 
-                    // Обрабатываем изменение состояния для вкладки "Генерации"
-                    else if (item.id === 'generations') {
-                      const newState = !generationsExpanded;
-                      setGenerationsExpanded(newState);
-                      localStorage.setItem('generationsExpanded', JSON.stringify(newState));
-                      saveInterfaceSettings(agentsExpanded, newState);
-                    }
-                  }}
-                >
-                  {isSavingSettings ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  ) : (item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </Button>
+                {!isSidebarCollapsed && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-blue-50"
+                    disabled={isSavingSettings}
+                    onClick={() => {
+                      // Обрабатываем изменение состояния для вкладки "Агенты"
+                      if (item.id === 'agents') {
+                        const newState = !agentsExpanded;
+                        setAgentsExpanded(newState);
+                        localStorage.setItem('agentsExpanded', JSON.stringify(newState));
+                        saveInterfaceSettings(newState, generationsExpanded);
+                      } 
+                      // Обрабатываем изменение состояния для вкладки "Генерации"
+                      else if (item.id === 'generations') {
+                        const newState = !generationsExpanded;
+                        setGenerationsExpanded(newState);
+                        localStorage.setItem('generationsExpanded', JSON.stringify(newState));
+                        saveInterfaceSettings(agentsExpanded, newState);
+                      }
+                    }}
+                  >
+                    {isSavingSettings ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    ) : (item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
               </div>
               
               {/* Render children if expanded */}
@@ -344,15 +358,17 @@ const Layout = ({ children }) => {
                       <Button
                         key={child.id}
                         variant={isChildActive ? "default" : "ghost"}
-                        className={`w-full justify-start text-sm ${
+                        className={cn(
+                          "w-full justify-start text-sm",
                           isChildActive 
                             ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                            : 'hover:bg-blue-50'
-                        }`}
+                            : 'hover:bg-blue-50',
+                          isSidebarCollapsed && "px-2"
+                        )}
                         onClick={() => navigate(child.path)}
                       >
-                        {ChildIcon && <ChildIcon className="mr-3 h-4 w-4" />}
-                        {child.label}
+                        {ChildIcon && <ChildIcon className={cn("h-4 w-4", isSidebarCollapsed ? "mx-auto" : "mr-3")} />}
+                        {!isSidebarCollapsed && child.label}
                       </Button>
                     );
                   })}
@@ -363,15 +379,17 @@ const Layout = ({ children }) => {
             // Обычный элемент без дочерних элементов
             <Button
               variant={isActive ? "default" : "ghost"}
-              className={`w-full justify-start mb-2 ${
+              className={cn(
+                "w-full justify-start mb-2",
                 isActive 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'hover:bg-blue-50'
-              }`}
+                  : 'hover:bg-blue-50',
+                isSidebarCollapsed && "px-2"
+              )}
               onClick={() => navigate(item.path)}
             >
-              {Icon && <Icon className="mr-3 h-5 w-5" />}
-              {item.label}
+              {Icon && <Icon className={cn("h-5 w-5", isSidebarCollapsed ? "mx-auto" : "mr-3")} />}
+              {!isSidebarCollapsed && item.label}
             </Button>
           )}
         </div>
@@ -390,27 +408,38 @@ const Layout = ({ children }) => {
       )}
 
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+        sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full',
+        isSidebarCollapsed ? 'w-20' : 'w-64'
+      )}>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div 
-              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/assistant')}
-            >
-              <img 
-                src="/neurotask-logo.jpg" 
-                alt="Neurotask Logo" 
-                className="h-10 w-10 rounded-lg object-cover mr-3"
-              />
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Neurotask</h1>
-                <p className="text-xs text-gray-600">AI Assistant</p>
+            {!isSidebarCollapsed && (
+              <div 
+                className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => navigate('/assistant')}
+              >
+                <img 
+                  src="/neurotask-logo.jpg" 
+                  alt="Neurotask Logo" 
+                  className="h-10 w-10 rounded-lg object-cover mr-3"
+                />
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">Neurotask</h1>
+                  <p className="text-xs text-gray-600">AI Assistant</p>
+                </div>
               </div>
-            </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:flex"
+              onClick={() => setIsSidebarCollapsed(prev => !prev)}
+            >
+              {isSidebarCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -444,13 +473,17 @@ const Layout = ({ children }) => {
                         <User className="h-5 w-5 text-white" />
                       </div>
                     </div>
-                    <div className="ml-3 text-left flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">{user?.username}</p>
-                      <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                    </div>
-                    <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    </div>
+                    {!isSidebarCollapsed && (
+                      <div className="ml-3 text-left flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">{user?.username}</p>
+                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                      </div>
+                    )}
+                    {!isSidebarCollapsed && (
+                      <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      </div>
+                    )}
                   </div>
                 </Button>
               }

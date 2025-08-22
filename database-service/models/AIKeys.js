@@ -49,23 +49,6 @@ const aiKeysSchema = new mongoose.Schema(
     timestamps: true,
     versionKey: false,
     collection: 'aikeys',
-    toJSON: {
-      transform: (_doc, ret) => {
-        // Prevent raw apiKey leakage by default
-        if (ret.apiKey) {
-          delete ret.apiKey;
-        }
-        return ret;
-      },
-    },
-    toObject: {
-      transform: (_doc, ret) => {
-        if (ret.apiKey) {
-          delete ret.apiKey;
-        }
-        return ret;
-      },
-    },
   }
 );
 

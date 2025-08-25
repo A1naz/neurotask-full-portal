@@ -170,11 +170,7 @@ const TeamManagement = () => {
   return (
     <div className="p-6">
 
-<div className="text-2xl font-bold">Все работники для теста
-  <pre className="text-sm font-mono bg-gray-100 p-4 rounded-md mt-2">
-    {JSON.stringify(availablePermissions, null, 2)}
-  </pre>
-</div>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Команда</CardTitle>

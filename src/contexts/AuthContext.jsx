@@ -22,14 +22,18 @@ export const AuthProvider = ({ children }) => {
 const API_BASE = (() => {
   // Приоритет переменным окружения Vite
   if (import.meta.env.VITE_API_BASE) {
+    
     return import.meta.env.VITE_API_BASE;
+    console.log(import.meta.env.VITE_API_BASE);
   }
   
   // Fallback для production
   if (process.env.NODE_ENV === 'production') {
+    console.log('https://neurotask.ru');
     return 'https://neurotask.ru';
   }
   
+  console.log('http://localhost:3001');
   // Development
   return 'http://localhost:3001';
 })();
@@ -55,6 +59,41 @@ const API_BASE = (() => {
     return null;
   };
 
+  const fetchAllowedRoutes = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/menu`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const menuConfig = await response.json();
+        // Исправлено: теперь мы берем данные из sidebarMenuItems
+        const sidebarMenu = menuConfig.sidebarMenuItems || [];
+        
+        // Рекурсивно извлекаем все пути
+        const getAllPaths = (items) => {
+          let paths = [];
+          for (const item of items) {
+            if (item.path) {
+              paths.push(item.path);
+            }
+            if (item.children) {
+              paths = paths.concat(getAllPaths(item.children));
+            }
+          }
+          return paths;
+        };
+        
+        const routes = getAllPaths(sidebarMenu);
+        setAllowedRoutes(routes);
+        return routes;
+      }
+    } catch (error) {
+      console.error('Failed to fetch allowed routes:', error);
+      setAllowedRoutes([]);
+      return [];
+    }
+  };
+
   // Check if user is authenticated on app load
   useEffect(() => {
     checkAuth();
@@ -77,6 +116,7 @@ const API_BASE = (() => {
         setIsAuthenticated(true);
         // Get CSRF token after successful authentication
         await getCsrfToken();
+        await fetchAllowedRoutes(); // Возвращаем загрузку маршрутов
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -110,8 +150,9 @@ const API_BASE = (() => {
         
         // Get CSRF token after successful login
         await getCsrfToken();
+        const routes = await fetchAllowedRoutes(); // Возвращаем загрузку маршрутов
         
-        return { success: true };
+        return { success: true, allowedRoutes: routes }; // Возвращаем маршруты для редиректа
       } else if (response.status === 403 && data.needsVerification) {
         return { 
           success: false, 
@@ -294,6 +335,7 @@ const API_BASE = (() => {
     debugCookies, // Expose debug function
     allowedRoutes,
     setAllowedRoutes,
+    fetchAllowedRoutes, // Экспортируем функцию
   };
 
   return (

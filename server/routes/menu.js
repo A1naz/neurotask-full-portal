@@ -12,14 +12,16 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
 
+
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Пользователь не авторизован.' });
     }
-
+    
     // Запрос к database-service для получения данных о пользователе
     const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}`, {
       headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
     });
+ 
     
     if (!userResponse.data.success) {
       // Возвращаем пустые меню, если пользователь не найден

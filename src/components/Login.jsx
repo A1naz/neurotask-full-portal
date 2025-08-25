@@ -16,18 +16,21 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login, resendVerificationCode, isAuthenticated } = useAuth();
+  const { login, resendVerificationCode, verifyEmail, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [verificationStep, setVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [tempUserData, setTempUserData] = useState(null);
 
-  // Если пользователь уже авторизован, перенаправляем в профиль
+  // Этот useEffect больше не нужен, ProtectedRoute справится с редиректом
+  // авторизованного пользователя со страницы логина.
+  /*
   React.useEffect(() => {
     if (isAuthenticated) {
       navigate('/assistant');
     }
   }, [isAuthenticated, navigate]);
+  */
 
   const handleChange = (e) => {
     setFormData({
@@ -45,7 +48,12 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
 
     if (result.success) {
-      navigate('/dashboard');
+      if (result.allowedRoutes && result.allowedRoutes.includes('/assistant')) {
+        navigate('/assistant');
+      } else {
+        const firstAllowedRoute = result.allowedRoutes && result.allowedRoutes[0];
+        navigate(firstAllowedRoute || '/user-settings');
+      }
     } else if (result.needsVerification) {
       setTempUserData({ id: result.userId });
       setVerificationStep(true);
@@ -67,25 +75,17 @@ const Login = () => {
       return;
     }
 
-    try {
-      const response = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://neurotask.ru/api' : 'http://localhost:3001/api'}/auth/verify-email`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId: tempUserData.id, code: verificationCode }),
-      });
+    const result = await verifyEmail(tempUserData.id, formData.email, verificationCode);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        navigate('/dashboard');
+    if (result.success && result.isAuthenticated) {
+      if (result.allowedRoutes && result.allowedRoutes.includes('/assistant')) {
+        navigate('/assistant');
       } else {
-        setError(data.message || 'Неверный код подтверждения');
+        const firstAllowedRoute = result.allowedRoutes && result.allowedRoutes[0];
+        navigate(firstAllowedRoute || '/user-settings');
       }
-    } catch (error) {
-      setError('Ошибка при подтверждении email');
+    } else {
+      setError(result.message || 'Неверный код подтверждения');
     }
 
     setLoading(false);

@@ -17,6 +17,9 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tempUserData, setTempUserData] = useState(null);
   const [allowedRoutes, setAllowedRoutes] = useState([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [agentsExpanded, setAgentsExpanded] = useState(true);
+  const [generationsExpanded, setGenerationsExpanded] = useState(true);
 
 // API base URL
 const API_BASE = (() => {
@@ -69,6 +72,11 @@ const API_BASE = (() => {
         // Исправлено: теперь мы берем данные из sidebarMenuItems
         const sidebarMenu = menuConfig.sidebarMenuItems || [];
         
+        // Устанавливаем состояние сайдбара
+        setIsSidebarCollapsed(menuConfig.isSidebarCollapsed || false);
+        setAgentsExpanded(menuConfig.agentsExpanded ?? true);
+        setGenerationsExpanded(menuConfig.generationsExpanded ?? true);
+
         // Рекурсивно извлекаем все пути
         const getAllPaths = (items) => {
           let paths = [];
@@ -91,6 +99,63 @@ const API_BASE = (() => {
       console.error('Failed to fetch allowed routes:', error);
       setAllowedRoutes([]);
       return [];
+    }
+  };
+
+  const updateSidebarState = async (isCollapsed) => {
+    if (!user) return;
+
+    try {
+      // Оптимистичное обновление UI
+      setIsSidebarCollapsed(isCollapsed);
+
+      await fetch(`${API_BASE}/api/users/${user._id}/settings/sidebar`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ isCollapsed }),
+      });
+    } catch (error) {
+      console.error('Failed to update sidebar state:', error);
+      // В случае ошибки можно откатить состояние, если это необходимо
+      setIsSidebarCollapsed(!isCollapsed);
+    }
+  };
+
+  const updateInterfaceSettings = async (settings) => {
+    if (!user) return;
+
+    const oldSettings = {
+      agentsExpanded,
+      generationsExpanded,
+    };
+
+    // Оптимистичное обновление
+    if (typeof settings.agentsExpanded === 'boolean') {
+      setAgentsExpanded(settings.agentsExpanded);
+    }
+    if (typeof settings.generationsExpanded === 'boolean') {
+      setGenerationsExpanded(settings.generationsExpanded);
+    }
+
+    try {
+      await fetch(`${API_BASE}/api/users/${user._id}/settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ interfaceSettings: settings }),
+      });
+    } catch (error) {
+      console.error('Failed to update interface settings:', error);
+      // Откат в случае ошибки
+      setAgentsExpanded(oldSettings.agentsExpanded);
+      setGenerationsExpanded(oldSettings.generationsExpanded);
     }
   };
 
@@ -336,6 +401,11 @@ const API_BASE = (() => {
     allowedRoutes,
     setAllowedRoutes,
     fetchAllowedRoutes, // Экспортируем функцию
+    isSidebarCollapsed,
+    updateSidebarState,
+    agentsExpanded,
+    generationsExpanded,
+    updateInterfaceSettings
   };
 
   return (

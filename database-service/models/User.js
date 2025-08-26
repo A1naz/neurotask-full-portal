@@ -76,6 +76,10 @@ const userSchema = new mongoose.Schema({
       providerOrder: {
         type: [String],
         default: []
+      },
+      isSidebarCollapsed: {
+        type: Boolean,
+        default: false
       }
     }
   },

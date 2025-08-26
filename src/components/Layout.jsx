@@ -83,29 +83,21 @@ const Layout = ({ children }) => {
   const [profileMenuItems, setProfileMenuItems] = useState([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [menuError, setMenuError] = useState(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
-    () => JSON.parse(localStorage.getItem('sidebar-collapsed')) || false
-  );
   
-  const [agentsExpanded, setAgentsExpanded] = useState(() => {
-    // Загружаем состояние из localStorage при инициализации
-    const saved = localStorage.getItem('agentsExpanded');
-    return saved !== null ? JSON.parse(saved) : true; // По умолчанию развернуто
-  });
-  const [generationsExpanded, setGenerationsExpanded] = useState(() => {
-    // Загружаем состояние из localStorage при инициализации
-    const saved = localStorage.getItem('generationsExpanded');
-    return saved !== null ? JSON.parse(saved) : true; // По умолчанию развернуто
-  });
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const { user, logout, API_BASE, csrfToken, setAllowedRoutes } = useAuth();
+  const {
+    user,
+    logout,
+    API_BASE,
+    setAllowedRoutes,
+    isSidebarCollapsed,
+    updateSidebarState,
+    agentsExpanded,
+    generationsExpanded,
+    updateInterfaceSettings,
+  } = useAuth();
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    localStorage.setItem('sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
-  }, [isSidebarCollapsed]);
 
   // Загрузка меню с сервера
   useEffect(() => {
@@ -169,78 +161,6 @@ const Layout = ({ children }) => {
 
     fetchMenuItems();
   }, [user, API_BASE, setAllowedRoutes]);
-
-  // Загрузить настройки интерфейса из базы данных
-  const loadInterfaceSettings = async () => {
-    if (!user?._id) return;
-    
-    try {
-      const response = await fetch(`${API_BASE}/api/users/${user._id}/settings`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.settings) {
-          // Обновляем состояние компонента
-          setAgentsExpanded(data.settings.agentsExpanded ?? true);
-          setGenerationsExpanded(data.settings.generationsExpanded ?? true);
-          
-          // Синхронизируем с localStorage для быстрого доступа
-          localStorage.setItem('agentsExpanded', JSON.stringify(data.settings.agentsExpanded ?? true));
-          localStorage.setItem('generationsExpanded', JSON.stringify(data.settings.generationsExpanded ?? true));
-        }
-      }
-    } catch (error) {
-      }
-  };
-
-  // Сохранить настройки интерфейса в базу данных
-  const saveInterfaceSettings = async (agentsExpanded, generationsExpanded) => {
-    if (!user?._id) {
-      // Если пользователь не авторизован, сохраняем только в localStorage
-      return;
-    }
-    
-    if (!csrfToken) {
-      // Если CSRF токен недоступен, сохраняем только в localStorage
-      return;
-    }
-    
-    setIsSavingSettings(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/users/${user._id}/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          interfaceSettings: {
-            agentsExpanded,
-            generationsExpanded
-          }
-        })
-      });
-      
-      if (!response.ok) {
-        // В случае ошибки, по крайней мере сохраняем в localStorage
-        } else {
-        }
-    } catch (error) {
-      // В случае ошибки, по крайней мере сохраняем в localStorage
-      } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  // Загружаем настройки при авторизации пользователя
-  useEffect(() => {
-    if (user?._id) {
-      loadInterfaceSettings();
-    }
-  }, [user?._id]);
 
   const handleLogout = async () => {
     await logout();
@@ -317,27 +237,15 @@ const Layout = ({ children }) => {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 hover:bg-blue-50"
-                    disabled={isSavingSettings}
                     onClick={() => {
-                      // Обрабатываем изменение состояния для вкладки "Агенты"
                       if (item.id === 'agents') {
-                        const newState = !agentsExpanded;
-                        setAgentsExpanded(newState);
-                        localStorage.setItem('agentsExpanded', JSON.stringify(newState));
-                        saveInterfaceSettings(newState, generationsExpanded);
-                      } 
-                      // Обрабатываем изменение состояния для вкладки "Генерации"
-                      else if (item.id === 'generations') {
-                        const newState = !generationsExpanded;
-                        setGenerationsExpanded(newState);
-                        localStorage.setItem('generationsExpanded', JSON.stringify(newState));
-                        saveInterfaceSettings(agentsExpanded, newState);
+                        updateInterfaceSettings({ agentsExpanded: !agentsExpanded });
+                      } else if (item.id === 'generations') {
+                        updateInterfaceSettings({ generationsExpanded: !generationsExpanded });
                       }
                     }}
                   >
-                    {isSavingSettings ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    ) : (item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
+                    {(item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronRight className="h-4 w-4" />
@@ -436,7 +344,7 @@ const Layout = ({ children }) => {
               variant="ghost"
               size="icon"
               className="hidden lg:flex"
-              onClick={() => setIsSidebarCollapsed(prev => !prev)}
+              onClick={() => updateSidebarState(!isSidebarCollapsed)}
             >
               {isSidebarCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
             </Button>

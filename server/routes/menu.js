@@ -69,7 +69,18 @@ router.get('/', requireAuth, async (req, res) => {
       finalProfileMenu = accessibleItems.filter(item => item.locations.includes('profile'));
     }
 
-    res.json({ success: true, sidebarMenuItems: finalSidebarMenu, profileMenuItems: finalProfileMenu });
+    const isSidebarCollapsed = user?.preferences?.interface?.isSidebarCollapsed || false;
+    const agentsExpanded = user?.preferences?.interface?.agentsExpanded ?? true;
+    const generationsExpanded = user?.preferences?.interface?.generationsExpanded ?? true;
+
+    res.json({ 
+      success: true, 
+      sidebarMenuItems: finalSidebarMenu, 
+      profileMenuItems: finalProfileMenu,
+      isSidebarCollapsed,
+      agentsExpanded,
+      generationsExpanded
+    });
 
   } catch (error) {
     console.error("Menu API Error:", error.message);

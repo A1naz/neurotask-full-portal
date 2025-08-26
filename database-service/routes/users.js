@@ -854,6 +854,55 @@ router.put('/:userId/settings', requireApiKey, async (req, res) => {
   }
 });
 
+// Update sidebar collapsed state
+router.patch('/:userId/settings/sidebar', requireApiKey, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isCollapsed } = req.body;
+
+    if (typeof isCollapsed !== 'boolean') {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'isCollapsed must be a boolean'
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Неверный ID пользователя'
+      });
+    }
+
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    if (!user.preferences) user.preferences = {};
+    if (!user.preferences.interface) user.preferences.interface = {};
+    
+    user.preferences.interface.isSidebarCollapsed = isCollapsed;
+    user.updatedAt = new Date();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Sidebar state updated',
+      isSidebarCollapsed: user.preferences.interface.isSidebarCollapsed
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Ошибка обновления состояния сайдбара'
+    });
+  }
+});
+
 // Получить задачи пользователя
 router.get('/:userId/tasks', requireApiKey, async (req, res) => {
   try {

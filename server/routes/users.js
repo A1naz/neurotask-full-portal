@@ -238,4 +238,34 @@ router.get('/:userId/settings', requireAuth, async (req, res) => {
   }
 });
 
+// Update sidebar collapsed state
+router.patch('/:userId/settings/sidebar', requireAuth, async (req, res) => {
+  console.log('req.session.userId', req.session.userId);
+  try {
+    console.log('req.session.userId', req.session.userId);
+    const { userId } = req.params;
+    const { isCollapsed } = req.body;
+
+    // Проверяем, что пользователь изменяет свои настройки
+    if (req.session.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Недостаточно прав для изменения настроек другого пользователя'
+      });
+    }
+
+    const response = await axios.patch(`${DATABASE_SERVICE_URL}/api/users/${userId}/settings/sidebar`, 
+      { isCollapsed },
+      { headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` } }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка обновления состояния сайдбара'
+    });
+  }
+});
+
 module.exports = router;

@@ -1,18 +1,18 @@
 const allMenuItems = [
   {
-    id: 'dashboard',
-    label: 'Ассистент',
-    iconName: 'Home',
-    path: '/assistant',
-    description: 'Обзор ключевых метрик и быстрый доступ к функциям',
-    locations: ['sidebar'],
-  },
-  {
     id: 'multi-chat',
     label: 'Мульти-чат AI',
     iconName: 'MessageSquare',
     path: '/assistant/multi-chat',
     description: 'Одновременное общение с несколькими AI-моделями',
+    locations: ['sidebar'],
+  },
+  {
+    id: 'dashboard',
+    label: 'Ассистент',
+    iconName: 'Home',
+    path: '/assistant',
+    description: 'Обзор ключевых метрик и быстрый доступ к функциям',
     locations: ['sidebar'],
   },
   {

@@ -16,37 +16,14 @@ router.get('/:userId', requireApiKey, async (req, res) => {
       });
     }
     
-    // Ищем настройки пользователя
-    const aiSettings = await AISettings.findOne({ userId: userId });
+    let aiSettings = await AISettings.findOne({ userId: userId });
+    
+    // Если настроек нет, создаем по умолчанию
     if (!aiSettings) {
-      // Проверяем, есть ли вообще записи в коллекции AISettings
-      try {
-        const allSettings = await AISettings.find({}).limit(5);
-        console.log('🔍 Total AISettings in database:', await AISettings.countDocuments({}));
-        console.log('🔍 Sample AISettings:', allSettings.map(s => ({ userId: s.userId, activeProviders: s.activeProviders })));
-        
-        // Проверяем конкретно наш userId
-        const specificSearch = await AISettings.find({ userId: userId });
-        console.log('🔍 Specific userId search result:', specificSearch);
-      } catch (countError) {
-        console.error('❌ Error counting AISettings:', countError);
-      }
-      
-      return res.status(404).json({
-        error: 'Not Found',
-        message: 'AI настройки не найдены для пользователя'
-      });
+      aiSettings = new AISettings({ userId: userId });
+      await aiSettings.save();
     }
     
-    // Проверяем структуру activeProviders
-    if (!Array.isArray(aiSettings.activeProviders)) {
-      return res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Некорректная структура activeProviders'
-      });
-    }
-    
-    // Преобразуем формат данных для фронтенда
     const aiProviders = {
       openai: aiSettings.activeProviders.includes('openai'),
       gemini: aiSettings.activeProviders.includes('gemini'),
@@ -57,26 +34,15 @@ router.get('/:userId', requireApiKey, async (req, res) => {
       deepseek: aiSettings.activeProviders.includes('deepseek')
     };
 
-    const responseData = {
+    res.json({
       success: true,
-      aiSettings: {
-        activeProviders: aiSettings.activeProviders,
-        defaultProvider: aiSettings.defaultProvider,
-        selectedProviders: aiSettings.selectedProviders || []
-      }
-    };
-    
-    // console.log('🚀 Sending response:', JSON.stringify(responseData, null, 2));
-    
-    res.json(responseData);
+      aiProviders,
+      selectedModels: aiSettings.selectedModels || {},
+      defaultProvider: aiSettings.defaultProvider,
+      selectedProviders: aiSettings.selectedProviders || []
+    });
   } catch (error) {
-    console.error('❌ === AI SETTINGS ERROR ===');
     console.error('❌ Error getting AI settings:', error);
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
-    console.error('❌ === AI SETTINGS ERROR END ===');
-    
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Ошибка получения AI настроек'
@@ -88,38 +54,30 @@ router.get('/:userId', requireApiKey, async (req, res) => {
 router.put('/:userId', requireApiKey, async (req, res) => {
   try {
     const { userId } = req.params;
-    const updateData = req.body;
+    const { aiProviders, selectedModels } = req.body;
     
     let aiSettings = await AISettings.findByUserId(userId);
     
     if (!aiSettings) {
-      // Создаем настройки по умолчанию если не найдены
       aiSettings = new AISettings({ userId });
     }
     
-    // Обновляем поля
-    if (updateData.activeProviders) {
-      aiSettings.activeProviders = updateData.activeProviders;
+    // Обновляем активные провайдеры
+    if (aiProviders) {
+      const activeProviders = Object.keys(aiProviders).filter(key => aiProviders[key]);
+      aiSettings.activeProviders = activeProviders;
     }
-    
-    if (updateData.defaultProvider) {
-      aiSettings.defaultProvider = updateData.defaultProvider;
-    }
-    
-    // 🔍 Обновляем выбранные провайдеры
-    if (updateData.selectedProviders) {
-      aiSettings.selectedProviders = updateData.selectedProviders;
+
+    // Обновляем выбранные модели
+    if (selectedModels) {
+      aiSettings.selectedModels = selectedModels;
     }
     
     await aiSettings.save();
     
     res.json({
       success: true,
-      aiSettings: {
-        activeProviders: aiSettings.activeProviders,
-        defaultProvider: aiSettings.defaultProvider,
-        selectedProviders: aiSettings.selectedProviders || []
-      }
+      message: 'Настройки AI успешно обновлены'
     });
   } catch (error) {
     console.error('Error updating AI settings:', error);

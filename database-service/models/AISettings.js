@@ -23,6 +23,13 @@ const aiSettingsSchema = new mongoose.Schema({
   selectedProviders: {
     type: [String],
     default: []
+  },
+  
+  // Выбранные модели для каждого провайдера
+  selectedModels: {
+    type: Map,
+    of: String,
+    default: {}
   }
 }, {
   timestamps: true

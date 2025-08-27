@@ -6,7 +6,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
+import { aiModelsConfig } from '@/config/ai-models';
 import { 
   Bot, 
   Save, 
@@ -38,13 +40,13 @@ const AISettings = () => {
     anthropic: false,
     deepseek: false
   });
+  const [selectedModels, setSelectedModels] = useState({});
 
   // Основные AI модели (чат)
   const chatModels = [
     {
       key: 'openai',
       name: 'OpenAI',
-      description: 'GPT-4, GPT-3.5, DALL-E',
       icon: '🤖',
       color: 'bg-green-100 text-green-800',
       isDisabled: false
@@ -52,7 +54,6 @@ const AISettings = () => {
     {
       key: 'gemini',
       name: 'Google Gemini',
-      description: 'Gemini Pro, Gemini Flash',
       icon: '🌟',
       color: 'bg-blue-100 text-blue-800',
       isDisabled: false
@@ -60,7 +61,6 @@ const AISettings = () => {
     {
       key: 'xai',
       name: 'xAI',
-      description: 'Grok AI',
       icon: '🚀',
       color: 'bg-purple-100 text-purple-800',
       isDisabled: false
@@ -68,7 +68,6 @@ const AISettings = () => {
     {
       key: 'yandexgpt',
       name: 'Yandex GPT',
-      description: 'YandexGPT',
       icon: '🔍',
       color: 'bg-red-100 text-red-800',
       isDisabled: false
@@ -76,7 +75,6 @@ const AISettings = () => {
     {
       key: 'gigachat',
       name: 'GigaChat',
-      description: 'Sber GigaChat',
       icon: '💼',
       color: 'bg-orange-100 text-orange-800',
       isDisabled: false
@@ -84,7 +82,6 @@ const AISettings = () => {
     {
       key: 'anthropic',
       name: 'Anthropic',
-      description: 'Claude 3, Claude 2',
       icon: '🧠',
       color: 'bg-indigo-100 text-indigo-800',
       isDisabled: false
@@ -92,12 +89,17 @@ const AISettings = () => {
     {
       key: 'deepseek',
       name: 'DeepSeek',
-      description: 'DeepSeek Coder, DeepSeek Chat',
       icon: '🔍',
       color: 'bg-emerald-100 text-emerald-800',
       isDisabled: false
     }
-  ];
+  ].map(provider => {
+    const models = aiModelsConfig[provider.key]?.models || [];
+    const description = models.length > 0
+      ? models.slice(0, 3).join(', ') + (models.length > 3 ? '...' : '')
+      : 'Модели не указаны';
+    return { ...provider, description };
+  });
 
   // Видео модели
   const videoModels = [
@@ -259,19 +261,13 @@ const AISettings = () => {
         const data = await response.json();
         if (data.aiProviders) {
           setAiProviders(data.aiProviders);
-        } else {
-          setAiProviders({
-            openai: false,
-            gemini: false,
-            xai: false,
-            yandexgpt: false,
-            gigachat: false,
-            anthropic: false,
-            deepseek: false
-          });
+        }
+        if (data.selectedModels) {
+          setSelectedModels(data.selectedModels);
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
+        setError(`Ошибка загрузки: ${errorData.message || response.statusText}`);
         }
     } catch (error) {
       setError('Ошибка загрузки настроек AI');
@@ -303,19 +299,35 @@ const AISettings = () => {
         ...aiProviders,
         [providerKey]: enabled
       };
+      
+      // Если провайдер выключается, удаляем его из selectedModels, если он там есть
+      const updatedModels = { ...selectedModels };
+      if (!enabled && updatedModels[providerKey]) {
+        delete updatedModels[providerKey];
+      } else if (enabled && !updatedModels[providerKey]) {
+        // Если включается и модели нет, ставим дефолтную (первую в списке)
+        const providerConfig = aiModelsConfig[providerKey];
+        if (providerConfig && providerConfig.models.length > 0) {
+          updatedModels[providerKey] = providerConfig.models[0];
+        }
+      }
 
       const response = await fetch(`${API_BASE}/api/ai-settings`, {
-        method: 'POST',
+        method: 'PUT',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken
         },
-        body: JSON.stringify({ aiProviders: updatedProviders }),
+        body: JSON.stringify({ 
+          aiProviders: updatedProviders,
+          selectedModels: updatedModels
+        }),
       });
 
       if (response.ok) {
         setAiProviders(updatedProviders);
+        setSelectedModels(updatedModels);
         setSuccess(`${provider?.name} ${enabled ? 'включен' : 'выключен'}!`);
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -328,6 +340,51 @@ const AISettings = () => {
       setSaving(false);
     }
   };
+
+  const handleModelChange = async (providerKey, model) => {
+    if (!csrfToken) {
+      setError('Ошибка: CSRF токен не найден');
+      return;
+    }
+    
+    setSaving(true);
+    setSuccess('');
+    setError('');
+
+    try {
+      const updatedModels = {
+        ...selectedModels,
+        [providerKey]: model
+      };
+
+      const response = await fetch(`${API_BASE}/api/ai-settings`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ 
+          aiProviders,
+          selectedModels: updatedModels 
+        }),
+      });
+
+      if (response.ok) {
+        setSelectedModels(updatedModels);
+        setSuccess(`Модель для ${providerKey} обновлена!`);
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Ошибка сохранения настроек');
+      }
+    } catch (error) {
+      setError('Ошибка при сохранении настроек');
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   const getActiveProvidersCount = () => {
     return Object.entries(aiProviders).filter(([key, enabled]) => {
@@ -375,6 +432,31 @@ const AISettings = () => {
                   disabled={saving || provider.isDisabled}
                 />
               </div>
+
+              {/* Model Selector */}
+              {aiProviders[provider.key] && !provider.isDisabled && aiModelsConfig[provider.key] && (
+                <div className="mt-4">
+                  <Label htmlFor={`model-select-${provider.key}`} className="text-sm font-medium text-gray-700 mb-2 block">
+                    Выбор модели
+                  </Label>
+                  <Select
+                    value={selectedModels[provider.key] || aiModelsConfig[provider.key]?.models[0]}
+                    onValueChange={(model) => handleModelChange(provider.key, model)}
+                    disabled={saving}
+                  >
+                    <SelectTrigger id={`model-select-${provider.key}`}>
+                      <SelectValue placeholder="Выберите модель" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aiModelsConfig[provider.key].models.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               {/* Status indicator */}
               <div className="mt-3 flex items-center gap-2">

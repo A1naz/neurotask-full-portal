@@ -33,6 +33,7 @@ router.post('/:ownerId', requireApiKey, async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Пользователь с таким email уже существует.' });
     }
+    console.log(req.body);
 
     const newUser = new User({
       username,
@@ -40,6 +41,12 @@ router.post('/:ownerId', requireApiKey, async (req, res) => {
       password, // Пароль будет захэширован pre-save хуком в модели User
       teamId: ownerId,
       isOwner: false,
+      interface: {
+        agentsExpanded: false,
+        generationsExpanded: false,
+        providerOrder: [],
+        isSidebarCollapsed: false
+      },
       phoneNumber,
       position,
       permissions,

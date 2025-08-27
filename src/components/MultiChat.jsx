@@ -66,9 +66,11 @@ const ProviderCard = React.forwardRef(({
   onResizeStart,
   chatRef,
   dragHandleListeners,
+  onSendMessage, // Новое свойство для отправки сообщения
   ...props 
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
+  const [individualMessage, setIndividualMessage] = useState(''); // Состояние для индивидуального сообщения
 
   const getProviderIcon = (provider) => {
     const icons = {
@@ -124,6 +126,20 @@ const ProviderCard = React.forwardRef(({
 
   const copyResponse = (content) => {
     navigator.clipboard.writeText(content);
+  };
+  
+  const handleSend = () => {
+    if (individualMessage.trim()) {
+      onSendMessage(provider, individualMessage.trim());
+      setIndividualMessage(''); // Очищаем поле после отправки
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
   
   return (
@@ -272,6 +288,27 @@ const ProviderCard = React.forwardRef(({
           <div className="w-2 h-2 bg-gray-400 rounded-sm" />
         </div>
       )}
+
+      {/* Поле ввода для индивидуального сообщения */}
+      <div className="p-2 border-t">
+        <div className="flex gap-2 items-center">
+          <Textarea
+            placeholder={`Запрос для ${getProviderName(provider)}...`}
+            value={individualMessage}
+            onChange={(e) => setIndividualMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="min-h-[40px] resize-none text-sm"
+            rows={1}
+          />
+          <Button
+            size="sm"
+            onClick={handleSend}
+            disabled={!individualMessage.trim() || isLoading}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 });
@@ -578,7 +615,7 @@ const MultiChat = () => {
       }
   };
 
-  const sendToProvider = async (provider) => {
+  const sendToProvider = async (provider, messageToSend) => {
     try {
       const systemPrompt = useCustomPrompt ? customSystemPrompt : defaultSystemPrompt;
       
@@ -616,7 +653,7 @@ const MultiChat = () => {
           'x-user-id': user?._id || '',
         },
         body: JSON.stringify({ 
-          message: message.trim(),
+          message: messageToSend.trim(),
           systemPrompt: systemPrompt
         }),
       });
@@ -721,30 +758,9 @@ const MultiChat = () => {
     setResponses(resetResponses);
 
     try {
-      const systemPrompt = useCustomPrompt ? customSystemPrompt : defaultSystemPrompt;
-      
       // Отправляем сообщения всем провайдерам по отдельности
-      const promises = selectedProviders.map(provider => 
-        fetch(`${API_BASE}/api/multi-chat/${provider}`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken,
-            'x-user-id': user?._id || '',
-          },
-          body: JSON.stringify({ 
-            message: message.trim(),
-            systemPrompt: systemPrompt
-          }),
-        }).then(res => res.json()).then(data => ({
-          provider,
-          success: data.success,
-          content: data.content || '',
-          error: data.error || ''
-        }))
-      );
-
+      const promises = selectedProviders.map(provider => sendToProvider(provider, message));
+      
       const results = await Promise.all(promises);
       
       // Обновляем ответы для каждого провайдера
@@ -1340,6 +1356,7 @@ const MultiChat = () => {
                           size={providerSizes[provider]}
                           onResizeStart={(e, p) => handleResizeStart(e, p)}
                           chatRef={el => chatRefs.current[provider] = el}
+                          onSendMessage={sendToProvider} // Передаем функцию
                         />
                       ))}
                     </SortableContext>

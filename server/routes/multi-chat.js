@@ -376,6 +376,8 @@ router.get('/providers', requireAuth, requirePermission('multi-chat'), async (re
 
     console.log('🔍 AI settings response received');
 
+    console.log("aiSettingsResponse", aiSettingsResponse.data);
+
     if (aiSettingsResponse.data?.success && aiSettingsResponse.data?.aiSettings?.activeProviders) {
       // Получаем активные провайдеры из настроек
       const activeProviders = aiSettingsResponse.data.aiSettings.activeProviders;

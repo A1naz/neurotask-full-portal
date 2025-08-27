@@ -60,49 +60,52 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       };
 
       const providerUrl = providerUrls[provider];
+      ``;
 
       if (!providerUrl) {
         aiResponse = `Провайдер ${provider} не настроен. Отсутствует переменная окружения ${provider.toUpperCase()}_SERVICE_URL`;
         success = false;
       } else {
-     
-      
-        console.log("Отправляем запрос к AI провайдеру")
-          // Отправляем запрос к AI провайдеру
-          const aiResponseData = await axios.post(
-            `${providerUrl}/api/ai/${provider}`,
-            {
-              message: message,
-              systemPrompt:
-                typeof systemPrompt === "object"
-                  ? systemPrompt.prompt
-                  : systemPrompt ||
-                    "Ты полезный ассистент. Отвечай на вопросы пользователя кратко и по делу.",
-              provider: provider,
-              context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
-              userId: userId,
-            },
-            {
-              timeout: 30000,
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          console.log("aiResponseData.data" + aiResponseData.data)
+        const foundModel = await aiSettings.findOne({ provider: provider });
+        let selectedModel = foundModel?.selectedProviders ? foundModel.selectedProviders[`${provider}`] : provider;
+        console.log("selectedModel", selectedModel);
 
-          if (aiResponseData.data?.success) {
-            aiResponse =
-              aiResponseData.data.content ||
-              aiResponseData.data.response ||
-              "Ответ получен от AI провайдера";
-          } else {
-            aiResponse = `Ошибка от провайдера ${provider}: ${
-              aiResponseData.data?.message || "Неизвестная ошибка"
-            }`;
-            success = false;
+        console.log("Отправляем запрос к AI провайдеру");
+        // Отправляем запрос к AI провайдеру
+        const aiResponseData = await axios.post(
+          `${providerUrl}/api/ai/${provider}`,
+          {
+            message: message,
+            systemPrompt:
+              typeof systemPrompt === "object"
+                ? systemPrompt.prompt
+                : systemPrompt ||
+                  "Ты полезный ассистент. Отвечай на вопросы пользователя кратко и по делу.",
+            provider: provider,
+            model: selectedModel,
+            context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
+            userId: userId,
+          },
+          {
+            timeout: 30000,
+            headers: {
+              "Content-Type": "application/json",
+            },
           }
-        
+        );
+        console.log("aiResponseData.data" + aiResponseData.data);
+
+        if (aiResponseData.data?.success) {
+          aiResponse =
+            aiResponseData.data.content ||
+            aiResponseData.data.response ||
+            "Ответ получен от AI провайдера";
+        } else {
+          aiResponse = `Ошибка от провайдера ${provider}: ${
+            aiResponseData.data?.message || "Неизвестная ошибка"
+          }`;
+          success = false;
+        }
       }
     } catch (aiError) {
       aiResponse = `Ошибка связи с провайдером ${provider}: ${aiError.message}`;
@@ -112,7 +115,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
     // Добавляем ответ AI в историю
     await chatHistory.addMessage("assistant", aiResponse);
 
-    console.log("aiResponse", aiResponse)
+    console.log("aiResponse", aiResponse);
 
     res.json({
       success: success,

@@ -17,6 +17,7 @@ router.get('/:userId', requireApiKey, async (req, res) => {
     }
     
     let aiSettings = await AISettings.findOne({ userId: userId });
+    console.log("aiSettings", aiSettings);
     
     // Если настроек нет, создаем по умолчанию
     if (!aiSettings) {
@@ -37,6 +38,13 @@ router.get('/:userId', requireApiKey, async (req, res) => {
     res.json({
       success: true,
       aiProviders,
+      aiSettings: {
+        activeProviders: aiSettings.activeProviders,
+        selectedModels: aiSettings.selectedModels || {},
+        defaultProvider: aiSettings.defaultProvider,
+        selectedProviders: aiSettings.selectedProviders || []
+      },
+      activeProviders: aiSettings.activeProviders,
       selectedModels: aiSettings.selectedModels || {},
       defaultProvider: aiSettings.defaultProvider,
       selectedProviders: aiSettings.selectedProviders || []

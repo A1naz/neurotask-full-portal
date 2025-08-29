@@ -16,7 +16,7 @@ router.get('/', requireAuth, async (req, res) => {
       headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
     });
 
-    console.log(balanceResponse.data);
+
     res.json(balanceResponse.data);
 
   } catch (error) {

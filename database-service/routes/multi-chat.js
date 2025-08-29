@@ -38,10 +38,64 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       });
     }
 
-    const chatTitle = `Чат ${new Date().toLocaleDateString('ru-RU')}`; // Placeholder title, will only be used if chat is new
+    let chatTitle = "Без названия"; // Default title
 
-    // Добавляем сообщение в историю чата
+    // Добавляем сообщение в историю чата. chatHistory.chatTitle will initially be "Без названия" if new
     const chatHistory = await ChatHistory.getOrCreate(userId, provider, chatId, chatTitle);
+    
+    // Determine if this is the first message being processed for this specific chatId across ALL providers
+    // This means no other ChatHistory document for this chatId has a non-default chatTitle yet.
+    const isGlobalFirstMessageForChatId = await ChatHistory.countDocuments({ chatId: chatId, chatTitle: { $ne: "Без названия" } }) === 0;
+
+    // If it's the global first message for this chatId AND this specific provider's chat history is empty
+    if (isGlobalFirstMessageForChatId && chatHistory.messages.length === 0) {
+      console.log("Генерируем название чата с помощью DeepSeek");
+      try {
+        const titlePrompt = `Generate a concise title (3-7 words, in Russian, without quotes) for the following conversation based on the user\'s first message: \"${message}\".`;
+        const deepseekTitleResponse = await axios.post(
+          `${providerUrls.deepseek}/api/ai/deepseek`,
+          {
+            message: titlePrompt,
+            systemPrompt: 'You are a helpful assistant that generates concise chat titles.',
+            provider: 'deepseek',
+            model: 'deepseek-chat',
+            userId: userId,
+          },
+          {
+            timeout: 10000,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (deepseekTitleResponse.data?.success && deepseekTitleResponse.data?.content) {
+          const generatedTitle = deepseekTitleResponse.data.content.trim();
+          const newChatTitle = generatedTitle.replace(/^"|"$/g, ''); // Удаляем возможные кавычки
+          
+          // Update ALL ChatHistory documents for this chatId with the new title
+          await ChatHistory.updateMany({ chatId: chatId }, { chatTitle: newChatTitle });
+          // Also update the current chatHistory instance in memory
+          chatHistory.chatTitle = newChatTitle;
+          console.log(`✅ Chat title for chatId ${chatId} set to: "${newChatTitle}"`);
+        } else {
+          console.warn('⚠️ Failed to generate chat title from DeepSeek, using default. ChatId:', chatId);
+          // If generation fails, we still set it to "Без названия" or leave it as is.
+          // The current implementation of getOrCreate already sets it to "Без названия".
+        }
+      } catch (titleError) {
+        console.error('❌ Error generating chat title from DeepSeek for ChatId:', chatId, titleError.message);
+      }
+    } else if (!isGlobalFirstMessageForChatId) {
+      // If a chat title has already been set by another provider, ensure this instance reflects it.
+      // This is important for consistency if this provider's chatHistory was created after title generation by another.
+      const existingChat = await ChatHistory.findOne({ chatId: chatId, chatTitle: { $ne: "Без названия" } });
+      if (existingChat && chatHistory.chatTitle === "Без названия") {
+        chatHistory.chatTitle = existingChat.chatTitle;
+        await chatHistory.save(); // Save to update this specific document's title
+      }
+    }
+
     // Добавляем сообщение пользователя
     await chatHistory.addMessage("user", message);
 
@@ -77,7 +131,20 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         aiResponse = `Провайдер ${provider} не настроен. Отсутствует переменная окружения ${provider.toUpperCase()}_SERVICE_URL`;
         success = false;
       } else {
-        const foundModel = await aiSettings.findOne({ provider: provider });
+        // Определяем URL сервиса провайдера
+        const providerUrls = {
+          openai: process.env.OPENAI_SERVICE_URL,
+          gemini: process.env.GEMINI_SERVICE_URL,
+          anthropic: process.env.ANTHROPIC_SERVICE_URL,
+          xai: process.env.XAI_SERVICE_URL,
+          yandexgpt: process.env.YANDEXGPT_SERVICE_URL,
+          gigachat: process.env.GIGACHAT_SERVICE_URL,
+          deepseek: process.env.DEEPSEEK_SERVICE_URL,
+        };
+
+        const providerUrl = providerUrls[provider];
+        
+        const foundModel = await AISettings.findOne({ userId: userId }); // Исправлено: AISettings.findOne
         let selectedModel = foundModel?.selectedProviders ? foundModel.selectedProviders[`${provider}`] : provider;
         console.log("selectedModel", selectedModel);
 
@@ -320,11 +387,19 @@ router.get('/all-chat-histories', requireApiKey, async (req, res) => {
       });
     }
 
+    // Проверяем валидность userId перед использованием его в агрегации
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Неверный формат userId",
+      });
+    }
+
     // Используем агрегацию для получения уникальных пар chatId и chatTitle
     const chatHistories = await ChatHistory.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId), chatId: { $exists: true, $ne: null }, chatTitle: { $exists: true, $ne: null } } },
       { $group: { _id: "$chatId", chatTitle: { $first: "$chatTitle" }, lastActivity: { $max: "$lastActivity" } } },
-      { $project: { _id: 0, chatId: "$_id", chatTitle: 1, lastActivity: 1 } },
+      { $project: { _id: 0, chatId: "$_id", chatTitle: { $ifNull: ["$chatTitle", "Без названия"] }, lastActivity: 1 } },
       { $sort: { lastActivity: -1 } }
     ]);
 
@@ -340,5 +415,6 @@ router.get('/all-chat-histories', requireApiKey, async (req, res) => {
     });
   }
 });
+
 
 module.exports = router;

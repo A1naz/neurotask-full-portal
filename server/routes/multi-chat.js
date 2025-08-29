@@ -463,7 +463,7 @@ router.get('/all-chat-histories', requireAuth, requirePermission('multi-chat'), 
     if (response.data?.success) {
       res.json(response.data);
     } else {
-      res.status(response.status).json(response.data);
+      res.status(response.status || 500).json(response.data);
     }
   } catch (error) {
     console.error('Ошибка получения всех историй чатов:', error);

@@ -20,7 +20,7 @@ const chatHistorySchema = new mongoose.Schema({
   // Заголовок чата
   chatTitle: {
     type: String,
-    required: true,
+    required: false, // Теперь chatTitle не обязателен при создании
   },
 
   // Провайдер AI
@@ -92,10 +92,10 @@ chatHistorySchema.methods.getContext = function(limit = 10) {
 };
 
 // Статический метод для поиска или создания истории чата
-chatHistorySchema.statics.getOrCreate = function(userId, provider, chatId, chatTitle) {
+chatHistorySchema.statics.getOrCreate = function(userId, provider, chatId, chatTitle = "Без названия") {
   return this.findOneAndUpdate(
     { userId, provider, chatId },
-    { userId, provider, chatId, chatTitle },
+    { userId, provider, chatId, chatTitle: chatTitle || "Без названия" },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 };

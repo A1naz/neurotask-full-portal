@@ -402,6 +402,7 @@ const MultiChat = () => {
   const [currentChatId, setCurrentChatId] = useState(null);
   const [userChatHistories, setUserChatHistories] = useState([]); // Новое состояние для истории чатов пользователя
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
+  const sidebarRef = useRef(null); // Ref для боковой панели
 
   const loadUserChatHistories = async () => {
     if (!csrfToken || !user?._id) return;
@@ -1180,10 +1181,32 @@ const MultiChat = () => {
     }
   };
 
+  // Обработчик для закрытия сайдбара при клике вне его
+  const handleClickOutside = (event) => {
+    if (sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    // Добавляем слушатель события mousedown при открытии сайдбара
+    if (isSidebarOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      // Удаляем слушатель события при закрытии сайдбара
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    // Очистка слушателя при размонтировании компонента
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSidebarOpen]); // Зависимость от isSidebarOpen
+
   return (
     <div className="flex flex-col h-full p-6 relative">
       {/* Боковая панель для истории чатов */}
       <div
+        ref={sidebarRef} // Привязываем ref к боковой панели
         className={cn(
           "fixed right-0 top-0 h-full w-64 bg-gray-900 text-white shadow-lg transform transition-transform duration-300 z-50",
           isSidebarOpen ? "translate-x-0" : "translate-x-full"
@@ -1204,7 +1227,10 @@ const MultiChat = () => {
                 <Button
                   key={chat.chatId}
                   variant={currentChatId === chat.chatId ? "secondary" : "ghost"}
-                  className="w-full justify-start text-left"
+                  className={cn(
+                    "w-full justify-start text-left hover:bg-gray-700",
+                    currentChatId === chat.chatId ? "bg-gray-700 text-white" : "text-gray-300"
+                  )}
                   onClick={() => handleChatSelect(chat.chatId)}
                 >
                   {chat.chatTitle}

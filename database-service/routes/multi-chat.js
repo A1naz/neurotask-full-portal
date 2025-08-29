@@ -6,12 +6,13 @@ const ChatHistory = require("../models/ChatHistory");
 const AIKeys = require("../models/AIKeys");
 const ProjectSettings = require("../models/ProjectSettings");
 const axios = require("axios"); // Добавляем axios для интеграции с внешними сервисами
+const { v4: uuidv4 } = require('uuid');
 
 // Отправить сообщение конкретному AI провайдеру
 router.post("/:provider", requireApiKey, async (req, res) => {
   try {
     const { provider } = req.params;
-    const { message, systemPrompt } = req.body;
+    const { message, systemPrompt, chatId } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -29,8 +30,17 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       });
     }
 
+    if (!chatId) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "chatId обязателен",
+      });
+    }
+
+    const chatTitle = `Чат ${new Date().toLocaleDateString('ru-RU')}`; // Placeholder title, will only be used if chat is new
+
     // Добавляем сообщение в историю чата
-    const chatHistory = await ChatHistory.getOrCreate(userId, provider);
+    const chatHistory = await ChatHistory.getOrCreate(userId, provider, chatId, chatTitle);
     // Добавляем сообщение пользователя
     await chatHistory.addMessage("user", message);
 
@@ -232,7 +242,7 @@ router.get("/providers", requireApiKey, async (req, res) => {
 });
 
 // Получить историю мульти-чата
-router.get("/history", requireApiKey, async (req, res) => {
+router.get('/history', requireApiKey, async (req, res) => {
   try {
     const { page = 1, limit = 20, provider = null } = req.query;
 
@@ -262,9 +272,10 @@ router.get("/history", requireApiKey, async (req, res) => {
 });
 
 // Получить историю чата для конкретного провайдера
-router.get("/history/:provider", requireApiKey, async (req, res) => {
+router.get('/history/:provider', requireApiKey, async (req, res) => {
   try {
     const { provider } = req.params;
+    const { chatId } = req.query;
 
     const userId = req.headers["x-user-id"];
 
@@ -275,89 +286,23 @@ router.get("/history/:provider", requireApiKey, async (req, res) => {
       });
     }
 
-    const chatHistory = await ChatHistory.getOrCreate(userId, provider);
+    if (!chatId) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "chatId обязателен",
+      });
+    }
+
+    const chatHistory = await ChatHistory.findOne({ userId, provider, chatId });
 
     res.json({
       success: true,
-      messages: chatHistory.messages || [],
+      messages: chatHistory ? chatHistory.messages : [],
     });
   } catch (error) {
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка получения истории чата",
-    });
-  }
-});
-
-// Очистить всю историю мульти-чата для пользователя
-router.delete("/history", requireApiKey, async (req, res) => {
-  try {
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return res.status(400).json({
-        error: "Bad Request",
-        message: "x-user-id заголовок обязателен",
-      });
-    }
-
-    // Находим все истории чата для пользователя
-    const allChatHistories = await ChatHistory.find({ userId });
-
-    if (allChatHistories.length > 0) {
-      // Очищаем каждую историю
-      for (const chatHistory of allChatHistories) {
-        await chatHistory.clearHistory();
-      }
-
-      res.json({
-        success: true,
-        message: `Очищено ${allChatHistories.length} историй чата`,
-        clearedCount: allChatHistories.length,
-      });
-    } else {
-      res.json({
-        success: true,
-        message: "Истории чата не найдены",
-        clearedCount: 0,
-      });
-    }
-  } catch (error) {
-    res.status(500).json({
-      error: "Internal Server Error",
-      message: "Ошибка очистки истории чата",
-    });
-  }
-});
-
-// Очистить историю чата для конкретного провайдера
-router.delete("/history/:provider", requireApiKey, async (req, res) => {
-  try {
-    const { provider } = req.params;
-
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return res.status(400).json({
-        error: "Bad Request",
-        message: "x-user-id заголовок обязателен",
-      });
-    }
-
-    const chatHistory = await ChatHistory.findOne({ userId, provider });
-
-    if (chatHistory) {
-      await chatHistory.clearHistory();
-    }
-
-    res.json({
-      success: true,
-      message: "История чата очищена",
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: "Internal Server Error",
-      message: "Ошибка очистки истории чата",
     });
   }
 });

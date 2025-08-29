@@ -145,78 +145,12 @@ router.get('/history/:provider', requireAuth, requirePermission('multi-chat'), a
   }
 });
 
-// Очистить всю историю мульти-чата
-router.delete('/history', requireAuth, requirePermission('multi-chat'), async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    
-    // Очищаем всю историю чата в database-service
-    const clearResponse = await axios.delete(`${DATABASE_SERVICE_URL}/api/multi-chat/history`, {
-      headers: { 
-        'x-api-key': DATABASE_SERVICE_API_KEY,
-        'x-user-id': userId
-      }
-    });
-
-    if (clearResponse.data?.success) {
-      res.json({
-        success: true,
-        message: 'Вся история чата очищена успешно',
-        clearedCount: clearResponse.data.clearedCount || 0
-      });
-    } else {
-      res.json({
-        success: true,
-        message: 'История чата очищена'
-      });
-    }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Ошибка очистки истории чата'
-    });
-  }
-});
-
-// Очистить историю чата для конкретного провайдера
-router.delete('/history/:provider', requireAuth, requirePermission('multi-chat'), async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    const { provider } = req.params;
-    
-    // Очищаем историю чата в database-service
-    const clearResponse = await axios.delete(`${DATABASE_SERVICE_URL}/api/multi-chat/history/${provider}`, {
-      headers: { 
-        'x-api-key': DATABASE_SERVICE_API_KEY,
-        'x-user-id': userId
-      }
-    });
-
-    if (clearResponse.data?.success) {
-      res.json({
-        success: true,
-        message: 'Chat history cleared successfully'
-      });
-    } else {
-      res.json({
-        success: true,
-        message: 'Chat history cleared'
-      });
-    }
-  } catch (error) {
-    res.json({
-      success: true,
-      message: 'Chat history cleared'
-    });
-  }
-});
-
 // Отправить сообщение конкретному провайдеру
 router.post('/:provider', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {
     const userId = req.session.userId;
     const { provider } = req.params;
-    const { message, systemPrompt } = req.body;
+    const { message, systemPrompt, chatId } = req.body;
     
     if (!message) {
       return res.status(400).json({
@@ -261,7 +195,8 @@ router.post('/:provider', requireAuth, requirePermission('multi-chat'), async (r
     // Отправляем сообщение в database-service
     const sendResponse = await axios.post(`${DATABASE_SERVICE_URL}/api/multi-chat/${provider}`, {
        message,
-       systemPrompt
+       systemPrompt,
+       chatId // Передаем chatId в database-service
      }, {
        headers: { 
          'x-api-key': DATABASE_SERVICE_API_KEY,
@@ -373,10 +308,6 @@ router.get('/providers', requireAuth, requirePermission('multi-chat'), async (re
     const aiSettingsResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/ai-settings/${userId}`, {
       headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
     });
-
-    console.log('🔍 AI settings response received');
-
-    console.log("aiSettingsResponse", aiSettingsResponse.data);
 
     if (aiSettingsResponse.data?.success && aiSettingsResponse.data?.aiSettings?.activeProviders) {
       // Получаем активные провайдеры из настроек
@@ -522,6 +453,59 @@ router.get('/history', requireAuth, requirePermission('multi-chat'), async (req,
   }
 });
 
+// Обновить текущий chat ID пользователя
+router.patch('/ai-settings/:userId/current-chat', requireAuth, requirePermission('multi-chat'), async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const { currentChatId } = req.body;
 
+    const updateResponse = await axios.patch(`${DATABASE_SERVICE_URL}/api/ai-settings/${userId}/current-chat`, { currentChatId }, {
+      headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
+    });
+
+    if (updateResponse.data?.success) {
+      res.json(updateResponse.data);
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Ошибка обновления текущего chat ID'
+      });
+    }
+  } catch (error) {
+    console.error('Ошибка обновления текущего chat ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка обновления текущего chat ID'
+    });
+  }
+});
+
+// Получить настройки AI пользователя (включая currentChatId)
+router.get('/ai-settings/:userId', requireAuth, requirePermission('multi-chat'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const aiSettingsResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/ai-settings/${userId}`, {
+      headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
+    });
+
+    if (aiSettingsResponse.data?.success) {
+      res.json({
+        success: true,
+        aiSettings: aiSettingsResponse.data.aiSettings
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'Настройки AI не найдены'
+      });
+    }
+  } catch (error) {
+    console.error('Ошибка получения настроек AI:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка получения настроек AI'
+    });
+  }
+});
 
 module.exports = router;

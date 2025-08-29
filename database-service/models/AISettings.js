@@ -30,6 +30,13 @@ const aiSettingsSchema = new mongoose.Schema({
     type: Map,
     of: String,
     default: {}
+  },
+
+  // ID текущего активного чата
+  currentChatId: {
+    type: String,
+    default: null,
+    index: true
   }
 }, {
   timestamps: true
@@ -87,7 +94,7 @@ aiSettingsSchema.statics.findByUserId = function(userId) {
 
 // Статический метод для создания настроек по умолчанию
 aiSettingsSchema.statics.createDefaultSettings = function(userId) {
-  return new this({ userId });
+  return new this({ userId, currentChatId: null });
 };
 
 module.exports = mongoose.model('AISettings', aiSettingsSchema); 

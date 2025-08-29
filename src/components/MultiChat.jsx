@@ -52,6 +52,7 @@ import {
   GripVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { v4 as uuidv4 } from 'uuid';
 
 const ProviderCard = React.forwardRef(({ 
   provider, 
@@ -396,6 +397,7 @@ const MultiChat = () => {
   const scrollAreaRef = useRef(null);
   const chatRefs = useRef({});
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('multichat_expanded_providers', JSON.stringify(expandedProviders));
@@ -414,6 +416,7 @@ const MultiChat = () => {
 
   useEffect(() => {
     if (csrfToken && user?._id) {
+      // Загружаем активных провайдеров и настройки AI, включая currentChatId
       loadActiveProviders();
       loadSystemPrompt();
       loadCustomPrompt();
@@ -429,10 +432,11 @@ const MultiChat = () => {
     }
   };
 
-  const loadChatHistory = async (provider) => {
-    if (!csrfToken || !user?._id) return;
+  const loadChatHistory = async (provider, chatIdToLoad) => {
+    if (!csrfToken || !user?._id || !chatIdToLoad) return;
     try {
-      const response = await fetch(`${API_BASE}/api/multi-chat/history/${provider}`, {
+      let url = `${API_BASE}/api/multi-chat/history/${provider}?chatId=${chatIdToLoad}`;
+      const response = await fetch(url, {
         credentials: 'include',
         headers: {
           'X-CSRF-Token': csrfToken,
@@ -502,9 +506,37 @@ const MultiChat = () => {
         credentials: 'include',
         headers: { 'X-CSRF-Token': csrfToken, 'x-user-id': user._id }
       });
-      if (response.ok) {
+      const aiSettingsResponse = await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}`, {
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': csrfToken, 'x-user-id': user._id }
+      });
+
+      if (response.ok && aiSettingsResponse.ok) {
         const data = await response.json();
+        const aiSettingsData = await aiSettingsResponse.json();
+
         const providers = data.activeProviders || [];
+        let fetchedCurrentChatId = aiSettingsData.aiSettings.currentChatId;
+
+        if (!fetchedCurrentChatId) {
+          // Если currentChatId нет, генерируем новый и сохраняем его
+          const newChatId = uuidv4();
+          setCurrentChatId(newChatId);
+          // Отправляем PATCH запрос на бэкенд, чтобы сохранить новый currentChatId
+          await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken,
+              'x-user-id': user._id
+            },
+            body: JSON.stringify({ currentChatId: newChatId }),
+          });
+          fetchedCurrentChatId = newChatId; // Используем новый chatId для текущей сессии
+        }
+        
+        setCurrentChatId(fetchedCurrentChatId);
         
         // Use locally stored order if available
         const savedOrder = localStorage.getItem('multichat_selected_providers');
@@ -531,7 +563,9 @@ const MultiChat = () => {
         const initialResponses = {};
         providers.forEach(provider => {
           initialResponses[provider] = { status: 'idle', content: '', error: '' };
-          loadChatHistory(provider);
+          if (fetchedCurrentChatId) {
+            loadChatHistory(provider, fetchedCurrentChatId);
+          }
         });
         setResponses(initialResponses);
       } else {
@@ -654,7 +688,8 @@ const MultiChat = () => {
         },
         body: JSON.stringify({ 
           message: messageToSend.trim(),
-          systemPrompt: systemPrompt
+          systemPrompt: systemPrompt,
+          chatId: currentChatId // Передаем currentChatId
         }),
       });
 
@@ -679,7 +714,7 @@ const MultiChat = () => {
         
         // Обновляем историю чата если успешно
         if (data.status === 'success') {
-          loadChatHistory(provider);
+          loadChatHistory(provider, currentChatId);
           setTimeout(() => scrollToBottom(provider), 300);
         }
       } else {
@@ -776,8 +811,8 @@ const MultiChat = () => {
       
       // Обновляем историю чата для успешных провайдеров
       results.forEach(result => {
-        if (result.success) {
-          loadChatHistory(result.provider);
+        if (result.success && currentChatId) {
+          loadChatHistory(result.provider, currentChatId);
           setTimeout(() => scrollToBottom(result.provider), 300);
         }
       });
@@ -872,39 +907,35 @@ const MultiChat = () => {
       }
 
       setIsClearingChats(true);
-      const response = await fetch(`${API_BASE}/api/multi-chat/history`, {
-        method: 'DELETE',
+      // Вместо удаления истории, мы устанавливаем currentChatId в null
+      const newChatId = uuidv4(); // Генерируем новый chatId для новой сессии
+      const response = await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
+        method: 'PATCH',
         credentials: 'include',
         headers: {
+          'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
         },
+        body: JSON.stringify({ currentChatId: newChatId }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        
-        // Очищаем локальную историю
+        // Очищаем локальную историю и сбрасываем currentChatId
         setChatHistories({});
         setMessage('');
         setResponses({});
-        
-        // Показываем уведомление об успехе
-        if (data.clearedCount > 0) {
-          setError(`✅ Очищено ${data.clearedCount} историй чата`);
-          // Убираем уведомление через 3 секунды
-          setTimeout(() => setError(''), 3000);
-        } else {
-          setError('✅ История чата очищена');
-          setTimeout(() => setError(''), 3000);
-        }
-        
+        setCurrentChatId(newChatId); // Устанавливаем новый currentChatId
+
+        setError(`✅ Начат новый чат.`);
+        setTimeout(() => setError(''), 3000);
+
       } else {
         const errorData = await response.json();
-        setError(`Ошибка очистки чатов: ${errorData.message || 'Неизвестная ошибка'}`);
+        setError(`Ошибка начала нового чата: ${errorData.message || 'Неизвестная ошибка'}`);
       }
     } catch (error) {
-      setError('Ошибка при очистке чатов: ' + error.message);
+      setError('Ошибка при начале нового чата: ' + error.message);
     } finally {
       setIsClearingChats(false);
     }

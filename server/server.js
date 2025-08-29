@@ -58,7 +58,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(helmet());
 app.use(compression());
-app.use(morgan('combined'));
+// app.use(morgan('combined'));
 
 // CORS настройки
 const corsOptions = {

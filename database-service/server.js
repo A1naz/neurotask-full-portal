@@ -122,7 +122,8 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 app.use(compression());
-app.use(morgan('combined'));
+// Morgan middleware for logging
+// app.use(morgan('combined'));
 app.use(cors({
   origin: ALLOWED_ORIGINS.split(','),
   credentials: true

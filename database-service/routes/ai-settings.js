@@ -17,7 +17,6 @@ router.get('/:userId', requireApiKey, async (req, res) => {
     }
     
     let aiSettings = await AISettings.findOne({ userId: userId });
-    console.log("aiSettings", aiSettings);
     
     // Если настроек нет, создаем по умолчанию
     if (!aiSettings) {
@@ -42,7 +41,8 @@ router.get('/:userId', requireApiKey, async (req, res) => {
         activeProviders: aiSettings.activeProviders,
         selectedModels: aiSettings.selectedModels || {},
         defaultProvider: aiSettings.defaultProvider,
-        selectedProviders: aiSettings.selectedProviders || []
+        selectedProviders: aiSettings.selectedProviders || [],
+        currentChatId: aiSettings.currentChatId // Добавляем currentChatId
       },
       activeProviders: aiSettings.activeProviders,
       selectedModels: aiSettings.selectedModels || {},
@@ -125,6 +125,38 @@ router.post('/:userId', requireApiKey, async (req, res) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Ошибка создания AI настроек'
+    });
+  }
+});
+
+// Обновить текущий chat ID пользователя
+router.patch('/:userId/current-chat', requireApiKey, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { currentChatId } = req.body;
+
+    let aiSettings = await AISettings.findByUserId(userId);
+
+    if (!aiSettings) {
+      return res.status(404).json({
+        success: false,
+        message: 'Настройки AI не найдены для пользователя'
+      });
+    }
+
+    aiSettings.currentChatId = currentChatId;
+    await aiSettings.save();
+
+    res.json({
+      success: true,
+      message: 'Current chat ID успешно обновлен',
+      currentChatId: aiSettings.currentChatId
+    });
+  } catch (error) {
+    console.error('Ошибка обновления current chat ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка обновления current chat ID'
     });
   }
 });

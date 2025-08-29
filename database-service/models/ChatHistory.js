@@ -9,6 +9,20 @@ const chatHistorySchema = new mongoose.Schema({
     index: true
   },
   
+  // ID чата
+  chatId: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
+
+  // Заголовок чата
+  chatTitle: {
+    type: String,
+    required: true,
+  },
+
   // Провайдер AI
   provider: {
     type: String,
@@ -51,6 +65,7 @@ const chatHistorySchema = new mongoose.Schema({
 
 // Индексы
 chatHistorySchema.index({ userId: 1, provider: 1 });
+chatHistorySchema.index({ userId: 1, chatId: 1, provider: 1 }, { unique: true });
 chatHistorySchema.index({ lastActivity: -1 });
 
 // Метод для добавления сообщения
@@ -77,11 +92,11 @@ chatHistorySchema.methods.getContext = function(limit = 10) {
 };
 
 // Статический метод для поиска или создания истории чата
-chatHistorySchema.statics.getOrCreate = function(userId, provider) {
+chatHistorySchema.statics.getOrCreate = function(userId, provider, chatId, chatTitle) {
   return this.findOneAndUpdate(
-    { userId, provider },
-    { userId, provider },
-    { upsert: true, new: true }
+    { userId, provider, chatId },
+    { userId, provider, chatId, chatTitle },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 };
 

@@ -75,6 +75,14 @@ const ProviderCard = React.forwardRef(({
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
   const [individualMessage, setIndividualMessage] = useState(''); // Состояние для индивидуального сообщения
+  const [isInputCollapsed, setIsInputCollapsed] = useState(() => {
+    const saved = localStorage.getItem(`multichat_input_collapsed_${provider}`);
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`multichat_input_collapsed_${provider}`, JSON.stringify(isInputCollapsed));
+  }, [isInputCollapsed, provider]);
 
   const getProviderIcon = (provider) => {
     const icons = {
@@ -166,7 +174,7 @@ const ProviderCard = React.forwardRef(({
         ...props.style
       }}
     >
-      <CardHeader className="pb-1 pt-2 px-3 !px-2 !gap-1">
+      <CardHeader className="pb-1 pt-2 !px-2 !gap-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span {...dragHandleListeners} className="cursor-grab touch-none">
@@ -201,6 +209,19 @@ const ProviderCard = React.forwardRef(({
                 <Minimize2 className="h-3 w-3" />
               ) : (
                 <Maximize2 className="h-3 w-3" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsInputCollapsed(!isInputCollapsed)}
+              className="h-6 w-6 p-0 hover:bg-blue-50"
+              title={isInputCollapsed ? "Развернуть поле ввода" : "Свернуть поле ввода"}
+            >
+              {isInputCollapsed ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronUp className="h-3 w-3" />
               )}
             </Button>
           </div>
@@ -294,25 +315,27 @@ const ProviderCard = React.forwardRef(({
       )}
 
       {/* Поле ввода для индивидуального сообщения */}
-      <div className="p-2 border-t">
-        <div className="flex gap-2 items-center">
-          <Textarea
-            placeholder={`Запрос для ${getProviderName(provider)}...`}
-            value={individualMessage}
-            onChange={(e) => setIndividualMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="min-h-[40px] resize-none text-sm"
-            rows={1}
-          />
-          <Button
-            size="sm"
-            onClick={handleSend}
-            disabled={!individualMessage.trim() || isLoading}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+      {!isInputCollapsed && (
+        <div className="p-2 border-t">
+          <div className="flex gap-2 items-center">
+            <Textarea
+              placeholder={`Запрос для ${getProviderName(provider)}...`}
+              value={individualMessage}
+              onChange={(e) => setIndividualMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="min-h-[40px] resize-none text-sm"
+              rows={1}
+            />
+            <Button
+              size="sm"
+              onClick={handleSend}
+              disabled={!individualMessage.trim() || isLoading}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </Card>
   );
 });

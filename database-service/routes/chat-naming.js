@@ -46,7 +46,7 @@ router.post("/generate-name", requireApiKey, async (req, res) => {
 
     const systemPrompt = "Ты - умный помощник, который кратко и по существу называет чаты. Назови этот чат на основе первого сообщения пользователя.";
 
-    let chatName = `Новый чат ыыввфы${new Date().toLocaleDateString('ru-RU')}`;
+    let chatName = `Новый чат ${new Date().toLocaleDateString('ru-RU')}`;
     try {
       const aiResponse = await axios.post(
         `${deepseekServiceUrl}/api/ai/deepseek`,

@@ -186,11 +186,6 @@ router.get("/:userId/balance", requireApiKey, async (req, res) => {
       });
     }
 
-    console.log({
-      success: true,
-      balance: user.balance || 0,
-      userId: user._id,
-    })
     res.json({
       success: true,
       balance: user.balance || 0,

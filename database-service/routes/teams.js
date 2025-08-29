@@ -33,7 +33,6 @@ router.post('/:ownerId', requireApiKey, async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Пользователь с таким email уже существует.' });
     }
-    console.log(req.body);
 
     const newUser = new User({
       username,

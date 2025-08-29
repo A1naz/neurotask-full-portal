@@ -15,6 +15,13 @@ router.post("/:provider", requireApiKey, async (req, res) => {
     const { provider } = req.params;
     const { message, systemPrompt, chatId } = req.body;
 
+    console.log("🔍 Multi-chat message received:", {
+      provider: provider,
+      message: message,
+      systemPrompt: systemPrompt,
+      chatId: chatId,
+    });
+
     if (!message) {
       return res.status(400).json({
         error: "Bad Request",
@@ -132,8 +139,6 @@ router.post("/:provider", requireApiKey, async (req, res) => {
 
     // Добавляем ответ AI в историю
     await chatHistory.addMessage("assistant", aiResponse);
-
-    console.log("aiResponse", aiResponse);
 
     res.json({
       success: success,

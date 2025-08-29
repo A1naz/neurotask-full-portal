@@ -154,6 +154,9 @@ app.use(limiter);
 // Multi-Chat Endpoints
 app.use('/api/multi-chat', require('./routes/multi-chat'));
 
+// Chat Naming Endpoint
+app.use('/api/chat-naming', require('./routes/chat-naming'));
+
 // AI Settings Endpoints
 app.use('/api/ai-settings', aiSettingsRoutes);
 

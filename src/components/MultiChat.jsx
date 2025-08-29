@@ -51,7 +51,8 @@ import {
   Plus,
   GripVertical,
   Menu,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -402,6 +403,7 @@ const MultiChat = () => {
   const [currentChatId, setCurrentChatId] = useState(null);
   const [userChatHistories, setUserChatHistories] = useState([]); // Новое состояние для истории чатов пользователя
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
+  const [isFirstMessage, setIsFirstMessage] = useState(true); // Состояние для отслеживания первого сообщения в новом чате
 
   const loadUserChatHistories = async () => {
     if (!csrfToken || !user?._id) return;
@@ -475,6 +477,9 @@ const MultiChat = () => {
           ...prev,
           [provider]: data.messages || []
         }));
+        if (data.messages && data.messages.length > 0) {
+          setIsFirstMessage(false); // Если есть история, значит это не первое сообщение
+        }
         setTimeout(() => scrollToBottom(provider), 200);
       }
     } catch (error) {
@@ -691,6 +696,31 @@ const MultiChat = () => {
         return;
       }
 
+      // Если это первое сообщение в чате, отправляем запрос на создание названия
+      if (isFirstMessage && currentChatId) {
+        try {
+          await fetch(`${API_BASE}/api/chat-naming/generate-name`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken,
+              'x-user-id': user._id,
+            },
+            body: JSON.stringify({
+              chatId: currentChatId,
+              message: messageToSend.trim(),
+              provider: provider, // Используем текущего провайдера для названия чата
+            }),
+          });
+          setIsFirstMessage(false); // Сбрасываем флаг после первого сообщения
+          loadUserChatHistories(); // Обновляем список чатов, чтобы увидеть новое название
+        } catch (namingError) {
+          console.error('Error generating chat name for single provider:', namingError);
+          // Не блокируем отправку сообщения, даже если название не сгенерировалось
+        }
+      }
+
       // 🔒 ПРОВЕРЯЕМ БАЛАНС ПЕРЕД ОТПРАВКОЙ
       if (balance < 1) {
         setResponses(prev => ({
@@ -810,6 +840,31 @@ const MultiChat = () => {
 
     setLoading(true);
     setError('');
+
+    // Если это первое сообщение в чате, отправляем запрос на создание названия
+    if (isFirstMessage && currentChatId) {
+      try {
+        await fetch(`${API_BASE}/api/chat-naming/generate-name`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            'x-user-id': user._id,
+          },
+          body: JSON.stringify({
+            chatId: currentChatId,
+            message: message.trim(),
+            provider: selectedProviders[0], // Используем первого провайдера для названия чата
+          }),
+        });
+        setIsFirstMessage(false); // Сбрасываем флаг после первого сообщения
+        loadUserChatHistories(); // Обновляем список чатов, чтобы увидеть новое название
+      } catch (namingError) {
+        console.error('Error generating chat name:', namingError);
+        // Не блокируем отправку сообщения, даже если название не сгенерировалось
+      }
+    }
 
     // Сбрасываем ответы для всех выбранных провайдеров
     const resetResponses = {};
@@ -952,6 +1007,7 @@ const MultiChat = () => {
         setMessage('');
         setResponses({});
         setCurrentChatId(newChatId); // Устанавливаем новый currentChatId
+        setIsFirstMessage(true); // Сбрасываем флаг, так как это новый чат
 
         setError(`✅ Начат новый чат.`);
         setTimeout(() => setError(''), 3000);
@@ -1185,26 +1241,29 @@ const MultiChat = () => {
       {/* Боковая панель для истории чатов */}
       <div
         className={cn(
-          "fixed right-0 top-0 h-full w-64 bg-gray-900 text-white shadow-lg transform transition-transform duration-300 z-50",
+          "fixed right-0 top-0 h-full w-64 bg-white text-gray-900 shadow-lg transform transition-transform duration-300 z-50",
           isSidebarOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
         <div className="p-4">
-          <h2 className="text-xl font-semibold mb-4">История чатов</h2>
+          <h2 className="text-xl font-semibold mb-4 ml-3">История чатов</h2>
           <Button
             variant="ghost"
-            className="absolute top-2 left-2 text-white hover:bg-gray-700"
+            className="absolute top-2 right-2 text-gray-700 hover:bg-gray-100"
             onClick={() => setIsSidebarOpen(false)}
           >
-            <X className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5 mt-3 mr-2" />
           </Button>
           <ScrollArea className="h-[calc(100vh-100px)]">
-            <div className="space-y-2">
-              {userChatHistories.map(chat => (
+            <div className="space-y-2"> 
+              {userChatHistories.map(chat => ( 
                 <Button
                   key={chat.chatId}
-                  variant={currentChatId === chat.chatId ? "secondary" : "ghost"}
-                  className="w-full justify-start text-left"
+                  variant={currentChatId === chat.chatId ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start text-left overflow-hidden whitespace-nowrap text-ellipsis",
+                    currentChatId === chat.chatId ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-gray-700 hover:bg-gray-100 "
+                  )}
                   onClick={() => handleChatSelect(chat.chatId)}
                 >
                   {chat.chatTitle}

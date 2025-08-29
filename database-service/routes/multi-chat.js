@@ -6,8 +6,8 @@ const ChatHistory = require("../models/ChatHistory");
 const AIKeys = require("../models/AIKeys");
 const ProjectSettings = require("../models/ProjectSettings");
 const axios = require("axios"); // Добавляем axios для интеграции с внешними сервисами
-const { v4: uuidv4 } = require('uuid');
-const mongoose = require('mongoose');
+const { v4: uuidv4 } = require("uuid");
+const mongoose = require("mongoose");
 
 // Отправить сообщение конкретному AI провайдеру
 router.post("/:provider", requireApiKey, async (req, res) => {
@@ -38,10 +38,15 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       });
     }
 
-    const chatTitle = `Чат ${new Date().toLocaleDateString('ru-RU')}`; // Placeholder title, will only be used if chat is new
+    const defaultChatTitle = `Чат ${new Date().toLocaleDateString("ru-RU")}`; // Placeholder title, will only be used if chat is new
 
     // Добавляем сообщение в историю чата
-    const chatHistory = await ChatHistory.getOrCreate(userId, provider, chatId, chatTitle);
+    const chatHistory = await ChatHistory.getOrCreate(
+      userId,
+      provider,
+      chatId,
+      defaultChatTitle
+    );
     // Добавляем сообщение пользователя
     await chatHistory.addMessage("user", message);
 
@@ -78,7 +83,9 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         success = false;
       } else {
         const foundModel = await aiSettings.findOne({ provider: provider });
-        let selectedModel = foundModel?.selectedProviders ? foundModel.selectedProviders[`${provider}`] : provider;
+        let selectedModel = foundModel?.selectedProviders
+          ? foundModel.selectedProviders[`${provider}`]
+          : provider;
         console.log("selectedModel", selectedModel);
 
         console.log("Отправляем запрос к AI провайдеру");
@@ -243,7 +250,7 @@ router.get("/providers", requireApiKey, async (req, res) => {
 });
 
 // Получить историю мульти-чата
-router.get('/history', requireApiKey, async (req, res) => {
+router.get("/history", requireApiKey, async (req, res) => {
   try {
     const { page = 1, limit = 20, provider = null } = req.query;
 
@@ -273,7 +280,7 @@ router.get('/history', requireApiKey, async (req, res) => {
 });
 
 // Получить историю чата для конкретного провайдера
-router.get('/history/:provider', requireApiKey, async (req, res) => {
+router.get("/history/:provider", requireApiKey, async (req, res) => {
   try {
     const { provider } = req.params;
     const { chatId } = req.query;
@@ -309,7 +316,7 @@ router.get('/history/:provider', requireApiKey, async (req, res) => {
 });
 
 // Получить все уникальные chatId и chatTitle для пользователя
-router.get('/all-chat-histories', requireApiKey, async (req, res) => {
+router.get("/all-chat-histories", requireApiKey, async (req, res) => {
   try {
     const userId = req.headers["x-user-id"];
 
@@ -320,20 +327,34 @@ router.get('/all-chat-histories', requireApiKey, async (req, res) => {
       });
     }
 
-    // Используем агрегацию для получения уникальных пар chatId и chatTitle
-    const chatHistories = await ChatHistory.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId), chatId: { $exists: true, $ne: null }, chatTitle: { $exists: true, $ne: null } } },
-      { $group: { _id: "$chatId", chatTitle: { $first: "$chatTitle" }, lastActivity: { $max: "$lastActivity" } } },
-      { $project: { _id: 0, chatId: "$_id", chatTitle: 1, lastActivity: 1 } },
+    // Используем агрегацию для получения уникальных чатов с последней активностью
+    const chatSummaries = await ChatHistory.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId), chatId: { $exists: true, $ne: null } } },
+      { $sort: { lastActivity: -1 } },
+      { $group: { _id: "$chatId", lastActivity: { $first: "$lastActivity" }, provider: { $first: "$provider" }, chatTitle: { $first: "$chatTitle" } } },
+      { $project: { _id: 0, chatId: "$_id", lastActivity: 1, provider: 1, chatTitle: 1 } },
       { $sort: { lastActivity: -1 } }
     ]);
 
+    // Получаем названия чатов из AISettings
+    const aiSettings = await AISettings.findByUserId(userId);
+    const chatTitlesMap = aiSettings && aiSettings.chatTitles ? new Map(Object.entries(aiSettings.chatTitles)) : new Map();
+
+    const enrichedChatHistories = chatSummaries.map(chat => ({
+      chatId: chat.chatId,
+      chatTitle: chatTitlesMap.has(chat.chatId) 
+        ? chatTitlesMap.get(chat.chatId) 
+        : (chat.chatTitle || `Чат ${new Date(chat.lastActivity).toLocaleDateString('ru-RU')}`),
+      lastActivity: chat.lastActivity,
+      provider: chat.provider,
+    }));
+
     res.json({
       success: true,
-      chatHistories: chatHistories,
+      chatHistories: enrichedChatHistories,
     });
   } catch (error) {
-    console.error('Ошибка получения списка чатов:', error);
+    console.error("Ошибка получения списка чатов:", error);
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка получения списка чатов",

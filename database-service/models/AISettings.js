@@ -37,6 +37,13 @@ const aiSettingsSchema = new mongoose.Schema({
     type: String,
     default: null,
     index: true
+  },
+
+  // Карта для хранения названий чатов по их ID
+  chatTitles: {
+    type: Map,
+    of: String,
+    default: {}
   }
 }, {
   timestamps: true
@@ -95,6 +102,15 @@ aiSettingsSchema.statics.findByUserId = function(userId) {
 // Статический метод для создания настроек по умолчанию
 aiSettingsSchema.statics.createDefaultSettings = function(userId) {
   return new this({ userId, currentChatId: null });
+};
+
+// Статический метод для обновления названия чата
+aiSettingsSchema.statics.updateChatTitle = async function(userId, chatId, chatTitle) {
+  await this.findOneAndUpdate(
+    { userId: userId },
+    { $set: { [`chatTitles.${chatId}`]: chatTitle } },
+    { upsert: true, new: true }
+  );
 };
 
 module.exports = mongoose.model('AISettings', aiSettingsSchema); 

@@ -217,6 +217,24 @@ app.use('/api/menu', require('./routes/menu')); // Подключаем новы
 app.use('/api/permissions', require('./routes/permissions'));
 app.use('/api/provider-order', require('./routes/provider-order'));
 
+// Прокси для эндпоинта именования чатов
+app.use('/api/chat-naming', async (req, res) => {
+  try {
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/chat-naming/generate-name`, req.body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': req.headers['x-csrf-token'],
+        'x-user-id': req.headers['x-user-id'],
+        'x-api-key': DATABASE_SERVICE_API_KEY
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error proxying chat naming request:', error.message);
+    res.status(error.response?.status || 500).json(error.response?.data || { message: 'Proxy error' });
+  }
+});
+
 // 🔍 МАРШРУТЫ ДЛЯ SELECTED-PROVIDERS (прокси к database-service)
 app.use('/api/selected-providers', require('./routes/selected-providers'));
 

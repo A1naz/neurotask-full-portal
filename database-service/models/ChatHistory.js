@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const AISettings = require('./AISettings');
 
 const chatHistorySchema = new mongoose.Schema({
   // ID пользователя
@@ -92,10 +93,18 @@ chatHistorySchema.methods.getContext = function(limit = 10) {
 };
 
 // Статический метод для поиска или создания истории чата
-chatHistorySchema.statics.getOrCreate = function(userId, provider, chatId, chatTitle) {
+chatHistorySchema.statics.getOrCreate = async function(userId, provider, chatId, defaultChatTitle) {
+  let chatTitleToUse = defaultChatTitle;
+
+  // Попытка получить название чата из AISettings
+  const aiSettings = await AISettings.findByUserId(userId);
+  if (aiSettings && aiSettings.chatTitles && aiSettings.chatTitles.has(chatId)) {
+    chatTitleToUse = aiSettings.chatTitles.get(chatId);
+  }
+
   return this.findOneAndUpdate(
     { userId, provider, chatId },
-    { userId, provider, chatId, chatTitle },
+    { userId, provider, chatId, chatTitle: chatTitleToUse },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 };

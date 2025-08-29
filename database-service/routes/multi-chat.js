@@ -7,6 +7,7 @@ const AIKeys = require("../models/AIKeys");
 const ProjectSettings = require("../models/ProjectSettings");
 const axios = require("axios"); // Добавляем axios для интеграции с внешними сервисами
 const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 
 // Отправить сообщение конкретному AI провайдеру
 router.post("/:provider", requireApiKey, async (req, res) => {
@@ -303,6 +304,39 @@ router.get('/history/:provider', requireApiKey, async (req, res) => {
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка получения истории чата",
+    });
+  }
+});
+
+// Получить все уникальные chatId и chatTitle для пользователя
+router.get('/all-chat-histories', requireApiKey, async (req, res) => {
+  try {
+    const userId = req.headers["x-user-id"];
+
+    if (!userId) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "x-user-id заголовок обязателен",
+      });
+    }
+
+    // Используем агрегацию для получения уникальных пар chatId и chatTitle
+    const chatHistories = await ChatHistory.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId), chatId: { $exists: true, $ne: null }, chatTitle: { $exists: true, $ne: null } } },
+      { $group: { _id: "$chatId", chatTitle: { $first: "$chatTitle" }, lastActivity: { $max: "$lastActivity" } } },
+      { $project: { _id: 0, chatId: "$_id", chatTitle: 1, lastActivity: 1 } },
+      { $sort: { lastActivity: -1 } }
+    ]);
+
+    res.json({
+      success: true,
+      chatHistories: chatHistories,
+    });
+  } catch (error) {
+    console.error('Ошибка получения списка чатов:', error);
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "Ошибка получения списка чатов",
     });
   }
 });

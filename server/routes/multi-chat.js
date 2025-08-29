@@ -453,6 +453,27 @@ router.get('/history', requireAuth, requirePermission('multi-chat'), async (req,
   }
 });
 
+// Получить все уникальные chatId и chatTitle для пользователя
+router.get('/all-chat-histories', requireAuth, requirePermission('multi-chat'), async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const response = await axios.get(`${DATABASE_SERVICE_URL}/api/multi-chat/all-chat-histories`, {
+      headers: { 'x-api-key': DATABASE_SERVICE_API_KEY, 'x-user-id': userId }
+    });
+    if (response.data?.success) {
+      res.json(response.data);
+    } else {
+      res.status(response.status).json(response.data);
+    }
+  } catch (error) {
+    console.error('Ошибка получения всех историй чатов:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка получения всех историй чатов'
+    });
+  }
+});
+
 // Обновить текущий chat ID пользователя
 router.patch('/ai-settings/:userId/current-chat', requireAuth, requirePermission('multi-chat'), async (req, res) => {
   try {

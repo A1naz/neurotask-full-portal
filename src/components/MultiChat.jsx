@@ -49,7 +49,9 @@ import {
   ChevronUp,
   ChevronDown,
   Plus,
-  GripVertical
+  GripVertical,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -398,6 +400,29 @@ const MultiChat = () => {
   const chatRefs = useRef({});
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(null);
+  const [userChatHistories, setUserChatHistories] = useState([]); // Новое состояние для истории чатов пользователя
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
+
+  const loadUserChatHistories = async () => {
+    if (!csrfToken || !user?._id) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/all-chat-histories`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserChatHistories(data.chatHistories);
+      } else {
+        console.error('Ошибка загрузки истории чатов пользователя');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки истории чатов пользователя:', error);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('multichat_expanded_providers', JSON.stringify(expandedProviders));
@@ -420,6 +445,7 @@ const MultiChat = () => {
       loadActiveProviders();
       loadSystemPrompt();
       loadCustomPrompt();
+      loadUserChatHistories(); // Загружаем историю чатов пользователя
     }
   }, [csrfToken, user?._id]);
 
@@ -930,6 +956,8 @@ const MultiChat = () => {
         setError(`✅ Начат новый чат.`);
         setTimeout(() => setError(''), 3000);
 
+        loadUserChatHistories(); // Обновляем историю чатов после создания нового
+
       } else {
         const errorData = await response.json();
         setError(`Ошибка начала нового чата: ${errorData.message || 'Неизвестная ошибка'}`);
@@ -1118,9 +1146,76 @@ const MultiChat = () => {
 
   const stats = getResponseStats();
 
+  const handleChatSelect = async (chatId) => {
+    if (!csrfToken || !user?._id) return;
+    try {
+      // Обновляем currentChatId на бэкенде
+      await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id
+        },
+        body: JSON.stringify({ currentChatId: chatId }),
+      });
+
+      // Обновляем локальное состояние
+      setCurrentChatId(chatId);
+      setChatHistories({}); // Очищаем текущие истории для загрузки новых
+
+      // Загружаем историю для каждого активного провайдера с новым chatId
+      selectedProviders.forEach(provider => {
+        loadChatHistory(provider, chatId);
+      });
+
+      setIsSidebarOpen(false); // Закрываем сайдбар
+      setError(`✅ Переключено на чат с ID: ${chatId}`);
+      setTimeout(() => setError(''), 3000);
+
+    } catch (error) {
+      console.error('Ошибка при выборе чата:', error);
+      setError(`Ошибка при выборе чата: ${error.message}`);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full p-6">
-             {/* Основная область с прокруткой */}
+    <div className="flex flex-col h-full p-6 relative">
+      {/* Боковая панель для истории чатов */}
+      <div
+        className={cn(
+          "fixed right-0 top-0 h-full w-64 bg-gray-900 text-white shadow-lg transform transition-transform duration-300 z-50",
+          isSidebarOpen ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <div className="p-4">
+          <h2 className="text-xl font-semibold mb-4">История чатов</h2>
+          <Button
+            variant="ghost"
+            className="absolute top-2 left-2 text-white hover:bg-gray-700"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          <ScrollArea className="h-[calc(100vh-100px)]">
+            <div className="space-y-2">
+              {userChatHistories.map(chat => (
+                <Button
+                  key={chat.chatId}
+                  variant={currentChatId === chat.chatId ? "secondary" : "ghost"}
+                  className="w-full justify-start text-left"
+                  onClick={() => handleChatSelect(chat.chatId)}
+                >
+                  {chat.chatTitle}
+                </Button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+
+      {/* Основная область с прокруткой */}
        <div className="flex-1 overflow-y-auto pb-4">
         {/* Фиксированная область сверху */}
         <div className="flex-shrink-0">
@@ -1188,6 +1283,15 @@ const MultiChat = () => {
                      <Plus className="h-4 w-4 mr-2" />
                    )}
                    {isClearingChats ? 'Очистка...' : 'Новый чат'}
+                 </Button>
+                 <Button
+                   variant="ghost"
+                   size="icon"
+                   onClick={() => setIsSidebarOpen(true)}
+                   className="ml-2"
+                   title="История чатов"
+                 >
+                   <Menu className="h-5 w-5" />
                  </Button>
                </div>
              </div>

@@ -88,7 +88,13 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         console.log("🔍 aiSettings", aiSettings.selectedModels);
         let selectedModel = aiSettings?.selectedModels ? aiSettings.selectedModels[provider] : provider;
    
-   
+        console.log("🔍 Multi-chat context loaded:", {
+          contextLimit: contextLimit,
+          contextMessages: chatContext.length,
+          provider: provider,
+          providerUrl: providerUrl,
+          selectedModel: selectedModel,
+        });
 
         // Отправляем запрос к AI провайдеру
         const aiResponseData = await axios.post(

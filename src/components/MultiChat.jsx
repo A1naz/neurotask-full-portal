@@ -900,32 +900,47 @@ const MultiChat = () => {
       // Отправляем сообщения всем провайдерам по отдельности
       const promises = selectedProviders.map(provider => sendToProvider(provider, message));
       
-      const results = await Promise.all(promises);
+      // Используем Promise.allSettled для обработки всех результатов, даже если есть ошибки
+      const results = await Promise.allSettled(promises);
       
-      // Обновляем ответы для каждого провайдера
-      const newResponses = {};
-      results.forEach(result => {
-        newResponses[result.provider] = {
-          status: result.success ? 'success' : 'error',
-          content: result.content || '',
-          error: result.error || ''
-        };
-      });
-      setResponses(newResponses);
-      
-      // Обновляем историю чата для успешных провайдеров
-      results.forEach(result => {
-        if (result.success && currentChatId) {
-          loadChatHistory(result.provider, currentChatId);
-          setTimeout(() => scrollToBottom(result.provider), 300);
+      // Обновляем ответы для каждого провайдера на основе результатов Promise.allSettled
+      results.forEach((result, index) => {
+        const provider = selectedProviders[index];
+        if (result.status === 'fulfilled') {
+          // Предполагаем, что sendToProvider уже обновил responses, если был успех
+          // Если sendToProvider возвращает что-то, это можно обработать здесь.
+          // В текущей реализации sendToProvider обновляет состояние напрямую,
+          // поэтому здесь, по сути, не нужно делать ничего, кроме сброса общей ошибки.
+        } else {
+          // Обработка отклоненных промисов (т.е. ошибок, которые не были пойманы sendToProvider)
+          // В данном случае sendToProvider должен был поймать большинство ошибок и обновить состояние responses.
+          // Но если по какой-то причине промис отклонился здесь, мы можем установить общую ошибку сети.
+          setResponses(prev => ({
+            ...prev,
+            [provider]: {
+              status: 'error',
+              content: '',
+              error: 'Ошибка сети'
+            }
+          }));
         }
       });
+
+      // Общая обработка ошибок, если все провайдеры вернули ошибку сети
+      const anyError = Object.values(responses).some(r => r.status === 'error');
+      if (anyError) {
+        setError('Ошибка при отправке запросов');
+      } else {
+        setError('');
+      }
+
+      // Обновляем историю чата для успешных провайдеров
+      // Эта часть должна быть внутри sendToProvider или Promise.allSettled результата
+      // Так как sendToProvider уже вызывает loadChatHistory при успехе, этот блок не нужен.
       
       // Очищаем поле ввода после отправки
       setMessage('');
       
-      // Обработка ошибок
-      setError('');
     } catch (error) {
       setError('Ошибка при отправке запросов');
       

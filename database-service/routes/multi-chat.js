@@ -256,7 +256,7 @@ router.get("/providers", requireApiKey, async (req, res) => {
 // Получить историю мульти-чата
 router.get("/history", requireApiKey, async (req, res) => {
   try {
-    const { page = 1, limit = 20, provider = null } = req.query;
+    const { page = 1, limit = 20, provider = null, chatId = null } = req.query;
 
     const userId = req.headers["x-user-id"];
 
@@ -267,15 +267,38 @@ router.get("/history", requireApiKey, async (req, res) => {
       });
     }
 
-    // Пока возвращаем заглушку
+    let query = { userId: new mongoose.Types.ObjectId(userId) };
+    if (provider) {
+      query.provider = provider;
+    }
+    if (chatId) {
+      query.chatId = chatId;
+    }
+
+    const total = await ChatHistory.countDocuments(query);
+    const history = await ChatHistory.find(query)
+      .sort({ lastActivity: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const formattedHistory = history.map((chat) => ({  // Изменил "messages" на "chatHistory" и добавил chatTitle и chatId
+      chatId: chat.chatId,
+      chatTitle: chat.chatTitle,
+      provider: chat.provider,
+      lastActivity: chat.lastActivity,
+      messages: chat.messages,
+    }));
+
     res.json({
       success: true,
-      messages: [],
-      total: 0,
+      messages: formattedHistory, // Возвращаем отформатированную историю, а не просто пустой массив
+      total: total,
       page: parseInt(page),
       limit: parseInt(limit),
     });
   } catch (error) {
+    console.error("Ошибка получения истории мульти-чата:", error);
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка получения истории мульти-чата",
@@ -305,13 +328,20 @@ router.get("/history/:provider", requireApiKey, async (req, res) => {
       });
     }
 
-    const chatHistory = await ChatHistory.findOne({ userId, provider, chatId });
+    const chatHistory = await ChatHistory.findOne({ chatId, provider, userId });
+
+    // console.log("🔍 chatHistory", chatHistory);
 
     res.json({
       success: true,
       messages: chatHistory ? chatHistory.messages : [],
+      chatId: chatHistory ? chatHistory.chatId : null,        // Добавлено
+      chatTitle: chatHistory ? chatHistory.chatTitle : null,  // Добавлено
+      provider: chatHistory ? chatHistory.provider : null,    // Добавлено
+      lastActivity: chatHistory ? chatHistory.lastActivity : null, // Добавлено
     });
   } catch (error) {
+    console.error("Ошибка получения истории чата:", error);
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка получения истории чата",

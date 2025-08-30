@@ -27,8 +27,7 @@ const aiSettingsSchema = new mongoose.Schema({
   
   // Выбранные модели для каждого провайдера
   selectedModels: {
-    type: Map,
-    of: String,
+    type: Object,
     default: {}
   },
 

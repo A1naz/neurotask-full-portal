@@ -15,13 +15,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
     const { provider } = req.params;
     const { message, systemPrompt, chatId } = req.body;
 
-    console.log("🔍 Multi-chat message received:", {
-      provider: provider,
-      message: message,
-      systemPrompt: systemPrompt,
-      chatId: chatId,
-    });
-
+ 
     if (!message) {
       return res.status(400).json({
         error: "Bad Request",
@@ -45,6 +39,8 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       });
     }
 
+   
+
     const defaultChatTitle = `Чат ${new Date().toLocaleDateString("ru-RU")}`; // Placeholder title, will only be used if chat is new
 
     // Добавляем сообщение в историю чата
@@ -57,18 +53,17 @@ router.post("/:provider", requireApiKey, async (req, res) => {
     // Добавляем сообщение пользователя
     await chatHistory.addMessage("user", message);
 
+
     // 🔍 ЗАГРУЖАЕМ КОНТЕКСТ ИЗ ИСТОРИИ ЧАТА
     const contextLimit = 10; // Лимит контекста для мультичата
     const chatContext = chatHistory.getContext(contextLimit);
 
-    console.log("🔍 Multi-chat context loaded:", {
-      contextLimit: contextLimit,
-      contextMessages: chatContext.length,
-      provider: provider,
-    });
+
     // Интеграция с реальными AI провайдерами
     let aiResponse = "";
     let success = true;
+
+
 
     try {
       // Определяем URL сервиса провайдера
@@ -83,19 +78,18 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       };
 
       const providerUrl = providerUrls[provider];
-      ``;
-
+      
       if (!providerUrl) {
         aiResponse = `Провайдер ${provider} не настроен. Отсутствует переменная окружения ${provider.toUpperCase()}_SERVICE_URL`;
         success = false;
       } else {
-        const foundModel = await aiSettings.findOne({ provider: provider });
-        let selectedModel = foundModel?.selectedProviders
-          ? foundModel.selectedProviders[`${provider}`]
-          : provider;
-        console.log("selectedModel", selectedModel);
+   
+        const aiSettings = await AISettings.findByUserId(userId);
+        console.log("🔍 aiSettings", aiSettings.selectedModels);
+        let selectedModel = aiSettings?.selectedModels ? aiSettings.selectedModels[provider] : provider;
+   
+   
 
-        console.log("Отправляем запрос к AI провайдеру");
         // Отправляем запрос к AI провайдеру
         const aiResponseData = await axios.post(
           `${providerUrl}/api/ai/${provider}`,
@@ -107,7 +101,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
                 : systemPrompt ||
                   "Ты полезный ассистент. Отвечай на вопросы пользователя кратко и по делу.",
             provider: provider,
-            model: selectedModel,
+            // model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
           },
@@ -118,7 +112,6 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             },
           }
         );
-        console.log("aiResponseData.data" + aiResponseData.data);
 
         if (aiResponseData.data?.success) {
           aiResponse =
@@ -334,22 +327,46 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
 
     // Используем агрегацию для получения уникальных чатов с последней активностью
     const chatSummaries = await ChatHistory.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId), chatId: { $exists: true, $ne: null } } },
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          chatId: { $exists: true, $ne: null },
+        },
+      },
       { $sort: { lastActivity: -1 } },
-      { $group: { _id: "$chatId", lastActivity: { $first: "$lastActivity" }, provider: { $first: "$provider" }, chatTitle: { $first: "$chatTitle" } } },
-      { $project: { _id: 0, chatId: "$_id", lastActivity: 1, provider: 1, chatTitle: 1 } },
-      { $sort: { lastActivity: -1 } }
+      {
+        $group: {
+          _id: "$chatId",
+          lastActivity: { $first: "$lastActivity" },
+          provider: { $first: "$provider" },
+          chatTitle: { $first: "$chatTitle" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          chatId: "$_id",
+          lastActivity: 1,
+          provider: 1,
+          chatTitle: 1,
+        },
+      },
+      { $sort: { lastActivity: -1 } },
     ]);
 
     // Получаем названия чатов из AISettings
     const aiSettings = await AISettings.findByUserId(userId);
-    const chatTitlesMap = aiSettings && aiSettings.chatTitles ? new Map(Object.entries(aiSettings.chatTitles)) : new Map();
+    const chatTitlesMap =
+      aiSettings && aiSettings.chatTitles
+        ? new Map(Object.entries(aiSettings.chatTitles))
+        : new Map();
 
-    const enrichedChatHistories = chatSummaries.map(chat => ({
+    const enrichedChatHistories = chatSummaries.map((chat) => ({
       chatId: chat.chatId,
-      chatTitle: chatTitlesMap.has(chat.chatId) 
-        ? chatTitlesMap.get(chat.chatId) 
-        : (chat.chatTitle || `Чат ${new Date(chat.lastActivity).toLocaleDateString('ru-RU')}`),
+      chatTitle: chatTitlesMap.has(chat.chatId)
+        ? chatTitlesMap.get(chat.chatId)
+        : chat.chatTitle ||
+          `Чат ${new Date(chat.lastActivity).toLocaleDateString("ru-RU")}`,
       lastActivity: chat.lastActivity,
       provider: chat.provider,
     }));

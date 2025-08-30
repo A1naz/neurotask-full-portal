@@ -107,7 +107,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
                 : systemPrompt ||
                   "Ты полезный ассистент. Отвечай на вопросы пользователя кратко и по делу.",
             provider: provider,
-            // model: selectedModel,
+            model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
           },

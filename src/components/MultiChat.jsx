@@ -75,14 +75,19 @@ const ProviderCard = React.forwardRef(({
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
   const [individualMessage, setIndividualMessage] = useState(''); // Состояние для индивидуального сообщения
-  const [isInputCollapsed, setIsInputCollapsed] = useState(() => {
-    const saved = localStorage.getItem(`multichat_input_collapsed_${provider}`);
-    return saved ? JSON.parse(saved) : false;
-  });
+  const [showInputField, setShowInputField] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem(`multichat_input_collapsed_${provider}`, JSON.stringify(isInputCollapsed));
-  }, [isInputCollapsed, provider]);
+    // Remove the old localStorage item if it exists
+    localStorage.removeItem(`multichat_input_collapsed_${provider}`);
+  }, [provider]);
+
+  useEffect(() => {
+    if (showInputField && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showInputField]);
 
   const getProviderIcon = (provider) => {
     const icons = {
@@ -211,19 +216,15 @@ const ProviderCard = React.forwardRef(({
                 <Maximize2 className="h-3 w-3" />
               )}
             </Button>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
-              onClick={() => setIsInputCollapsed(!isInputCollapsed)}
+              onClick={() => setShowInputField(true)}
               className="h-6 w-6 p-0 hover:bg-blue-50"
-              title={isInputCollapsed ? "Развернуть поле ввода" : "Свернуть поле ввода"}
+              title="Отправить индивидуальное сообщение"
             >
-              {isInputCollapsed ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronUp className="h-3 w-3" />
-              )}
-            </Button>
+              <Send className="h-3 w-3" />
+            </Button> */}
           </div>
         </div>
       </CardHeader>
@@ -232,7 +233,6 @@ const ProviderCard = React.forwardRef(({
           <div 
             ref={chatRef}
             className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-0" 
-            style={{ minHeight: '200px' }}
           >
             <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
               <span>История чата ({history.length} сообщений)</span>
@@ -315,14 +315,16 @@ const ProviderCard = React.forwardRef(({
       )}
 
       {/* Поле ввода для индивидуального сообщения */}
-      {!isInputCollapsed && (
+      {showInputField ? (
         <div className="p-2 border-t">
           <div className="flex gap-2 items-center">
             <Textarea
+              ref={inputRef}
               placeholder={`Запрос для ${getProviderName(provider)}...`}
               value={individualMessage}
               onChange={(e) => setIndividualMessage(e.target.value)}
               onKeyPress={handleKeyPress}
+              onBlur={() => { if (!individualMessage.trim()) setShowInputField(false); }}
               className="min-h-[40px] resize-none text-sm"
               rows={1}
             />
@@ -330,11 +332,21 @@ const ProviderCard = React.forwardRef(({
               size="sm"
               onClick={handleSend}
               disabled={!individualMessage.trim() || isLoading}
+              className="px-6"
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
+      ) : (
+        <Button
+          size="sm"
+          onClick={() => setShowInputField(true)}
+          className="absolute bottom-2 right-2 px-6"
+          title="Отправить индивидуальное сообщение"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
       )}
     </Card>
   );

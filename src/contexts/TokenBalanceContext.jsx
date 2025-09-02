@@ -42,13 +42,15 @@ export const TokenBalanceProvider = ({ children }) => {
   // Загружаем баланс при инициализации
   useEffect(() => {
     if (user) {
-      fetchBalance();
+      // fetchBalance(); // Removed to avoid double fetch
     }
   }, [user, API_BASE]);
 
   // Автообновление баланса каждые 30 секунд
   useEffect(() => {
     if (!user) return;
+
+    fetchBalance(); // Fetch immediately on mount and user change
 
     const interval = setInterval(() => {
       fetchBalance();

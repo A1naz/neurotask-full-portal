@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   // New state for menu items and loading
   const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
   const [profileMenuItems, setProfileMenuItems] = useState([]);
-  const [isLoadingMenu, setIsLoadingMenu] = useState(true);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false); // Change to false
   const [menuError, setMenuError] = useState(null);
 
 // API base URL

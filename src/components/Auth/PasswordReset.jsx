@@ -19,7 +19,7 @@ const PasswordReset = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userId, setUserId] = useState(null); // To store user ID from initial reset request
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'; // Adjust as needed
+  const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:3001'; // Adjust as needed
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();

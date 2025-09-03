@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { TokenBalanceProvider } from '@/contexts/TokenBalanceContext';
@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Layout from '@/components/Layout';
 import Login from '@/components/Login';
 import Register from '@/components/Register';
+import PasswordReset from '@/components/Auth/PasswordReset';
 import Assistant from '@/components/Assistant';
 import BotManagement from '@/components/BotManagement';
 import CalendarIntegration from '@/components/CalendarIntegration';
@@ -41,6 +42,14 @@ import './App.css';
 // Component to handle root redirect
 const RootRedirect = () => {
   const { user, loading } = useAuth();
+
+  // Diagnostic log for NODE_ENV
+  useEffect(() => {
+    console.log('Current NODE_ENV:', import.meta.env.MODE);
+    console.log('Is StrictMode enabled (development mode in React often shows double renders, indicating StrictMode):', 
+      process.env.NODE_ENV !== 'production'
+    );
+  }, []);
 
   if (loading) {
     return (
@@ -82,6 +91,7 @@ function App() {
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/password-reset" element={<PasswordReset />} />
                 
                 {/* Protected routes with Layout */}
                 <Route

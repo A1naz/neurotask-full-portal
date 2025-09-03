@@ -154,7 +154,79 @@ const resendVerificationEmail = async (email, username, code) => {
   return sendVerificationEmail(email, username, code);
 };
 
+// Отправка кода сброса пароля
+const sendPasswordResetEmail = async (email, username, code) => {
+  try {
+    const transporter = getTransporter();
+    
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'info@neurotask.ru',
+      to: email,
+      subject: 'Сброс пароля - Neurotask',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Neurotask</h1>
+          </div>
+          
+          <div style="padding: 30px; background: #f9f9f9;">
+            <h2 style="color: #333; margin-bottom: 20px;">Сброс пароля</h2>
+            
+            <p style="color: #666; line-height: 1.6;">
+              Здравствуйте, <strong>${username}</strong>!
+            </p>
+            
+            <p style="color: #666; line-height: 1.6;">
+              Вы запросили сброс пароля для вашей учетной записи Neurotask. Пожалуйста, используйте следующий код для завершения процесса:
+            </p>
+            
+            <div style="background: #fff; border: 2px solid #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+              <h3 style="color: #667eea; font-size: 32px; letter-spacing: 8px; margin: 0; font-family: monospace;">
+                ${code}
+              </h3>
+            </div>
+            
+            <p style="color: #666; line-height: 1.6; font-size: 14px;">
+              <strong>Важно:</strong> Код действителен в течение 1 часа. Если вы не запрашивали сброс пароля, проигнорируйте это письмо.
+            </p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+              <p style="color: #999; font-size: 12px; margin: 0;">
+                Это автоматическое письмо, не отвечайте на него.
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    };
+    
+    const info = await transporter.sendMail(mailOptions);
+    
+    console.log('📧 Password reset email sent successfully:');
+    console.log('  • To:', email);
+    console.log('  • Username:', username);
+    console.log('  • Code:', code);
+    console.log('  • Message ID:', info.messageId);
+    console.log('  • Response:', info.response);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔍 Email sent (development):', info.messageId);
+    }
+    
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Password reset email failed:');
+    console.error('  • To:', email);
+    console.error('  • Username:', username);
+    console.error('  • Error:', error.message);
+    console.error('  • Stack:', error.stack);
+    
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
-  resendVerificationEmail
+  resendVerificationEmail,
+  sendPasswordResetEmail
 }; 

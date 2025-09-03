@@ -324,7 +324,7 @@ const API_BASE = (() => {
     }
   };
 
-  const register = async (username, email, password) => {
+  const register = async (email, password) => {
     try {
       debugCookies(); // Debug cookies before registration
       
@@ -334,7 +334,7 @@ const API_BASE = (() => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();

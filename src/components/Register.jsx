@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: '',
+    
     email: '',
     password: '',
     confirmPassword: '',
@@ -64,18 +64,18 @@ const Register = () => {
     setLoading(true);
     setError('');
 
-    // Validate username
-    if (formData.username.length < 3) {
-      setError('Имя пользователя должно содержать минимум 3 символа');
-      setLoading(false);
-      return;
-    }
+    // Validate username - REMOVED
+    // if (formData.username.length < 3) {
+    //   setError('Имя пользователя должно содержать минимум 3 символа');
+    //   setLoading(false);
+    //   return;
+    // }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      setError('Имя пользователя может содержать только буквы, цифры и подчеркивания');
-      setLoading(false);
-      return;
-    }
+    // if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+    //   setError('Имя пользователя может содержать только буквы, цифры и подчеркивания');
+    //   setLoading(false);
+    //   return;
+    // }
 
     // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -85,9 +85,9 @@ const Register = () => {
       return;
     }
 
-    // Validate password (soft validation)
-    if (formData.password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов');
+    // Validate password length
+    if (formData.password.length < 10) { // Changed minimum length to 10
+      setError('Пароль должен содержать минимум 10 символов');
       setLoading(false);
       return;
     }
@@ -100,7 +100,7 @@ const Register = () => {
     }
 
     try {
-      const result = await register(formData.username, formData.email, formData.password);
+      const result = await register(formData.email, formData.password); // Removed username
 
       if (result.success) {
         setTempUserData(result.user);
@@ -169,6 +169,37 @@ const Register = () => {
     }
 
     setLoading(false);
+  };
+
+  const generateStrongPassword = () => {
+    const length = 16; // Default length
+    const uppercase = true;
+    const lowercase = true;
+    const numbers = true;
+    const symbols = true;
+
+    let password = '';
+    const characters = [];
+
+    if (uppercase) {
+      characters.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    }
+    if (lowercase) {
+      characters.push('abcdefghijklmnopqrstuvwxyz');
+    }
+    if (numbers) {
+      characters.push('0123456789');
+    }
+    if (symbols) {
+      characters.push('!@#$%^&*()_+-=[]{}|;:,.<>?');
+    }
+
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      password += characters[randomIndex][Math.floor(Math.random() * characters[randomIndex].length)];
+    }
+    setFormData(prev => ({ ...prev, password, confirmPassword: password }));
+    setError(''); // Clear any previous error
   };
 
   if (verificationStep) {
@@ -271,8 +302,8 @@ const Register = () => {
               className="h-16 w-auto"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Neurotask</h1>
-          <p className="text-gray-600 mt-2">Создайте свой аккаунт</p>
+          <h1 className="text-3xl font-bold text-gray-900">NeuroTask</h1>
+          
         </div>
 
         <Card className="shadow-lg">
@@ -290,27 +321,7 @@ const Register = () => {
                 </Alert>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="username">Имя пользователя</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    className="pl-10"
-                    required
-                    minLength={3}
-                    maxLength={30}
-                    pattern="[a-zA-Z0-9_]+"
-                    title="Только буквы, цифры и подчеркивания"
-                  />
-                </div>
-              </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -329,6 +340,14 @@ const Register = () => {
               </div>
 
               <div className="space-y-2">
+              <Button
+                    type="button"
+                    variant="outline"
+                    onClick={generateStrongPassword}
+                    className="w-full mt-2"
+                  >
+                    Сгенерировать надежный пароль
+                  </Button>
                 <Label htmlFor="password">Пароль</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -341,7 +360,7 @@ const Register = () => {
                     onChange={handleChange}
                     className="pl-10 pr-10"
                     required
-                    minLength={8}
+                    minLength={10} // Changed minLength to 10
                   />
                   <Button
                     type="button"
@@ -367,7 +386,7 @@ const Register = () => {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className={`flex items-center gap-1 ${passwordValidation.length ? 'text-green-600' : 'text-gray-500'}`}>
                       {passwordValidation.length ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                      Минимум 8 символов
+                      Минимум 10 символов
                     </div>
                     <div className={`flex items-center gap-1 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-500'}`}>
                       {passwordValidation.hasUppercase ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -391,6 +410,7 @@ const Register = () => {
                       ⚠️ Рекомендуется использовать пароль, соответствующий всем требованиям безопасности
                     </div>
                   )}
+              
                 </div>
               </div>
 
@@ -407,7 +427,7 @@ const Register = () => {
                     onChange={handleChange}
                     className="pl-10 pr-10"
                     required
-                    minLength={8}
+                    minLength={10} // Changed minLength to 10
                   />
                   <Button
                     type="button"
@@ -428,10 +448,14 @@ const Register = () => {
                 )}
               </div>
 
+              <p className="text-sm text-gray-600 text-center mb-4">
+                После регистрации на вашу почту будет отправлен код подтверждения, который необходимо ввести для активации аккаунта.
+              </p>
+
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loading || formData.password !== formData.confirmPassword}
+                disabled={loading || !isPasswordValid || formData.password !== formData.confirmPassword}
               >
                 {loading ? (
                   <>

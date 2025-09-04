@@ -10,14 +10,6 @@ router.post("/generate-name", requireApiKey, async (req, res) => {
   try {
     const { chatId, message, provider } = req.body;
 
-
-    
-  res.json({
-    success: true,
-    chatName: "Новый чат " + new Date().toLocaleDateString("ru-RU"),
-  });
-  return;
-
     if (!chatId || !message || !provider) {
       return res.status(400).json({
         error: "Bad Request",

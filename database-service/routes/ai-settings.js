@@ -31,7 +31,9 @@ router.get('/:userId', requireApiKey, async (req, res) => {
       yandexgpt: aiSettings.activeProviders.includes('yandexgpt'),
       gigachat: aiSettings.activeProviders.includes('gigachat'),
       anthropic: aiSettings.activeProviders.includes('anthropic'),
-      deepseek: aiSettings.activeProviders.includes('deepseek')
+      deepseek: aiSettings.activeProviders.includes('deepseek'),
+      veo3: aiSettings.activeProviders.includes('veo3'),
+      imagen: aiSettings.activeProviders.includes('imagen')
     };
 
     res.json({

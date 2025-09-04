@@ -52,10 +52,14 @@ import {
   GripVertical,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Video,
+  Image,
+  Music
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
+import { aiModelsConfig } from '@/config/ai-models'; // Import aiModelsConfig
 
 const ProviderCard = React.forwardRef(({ 
   provider, 
@@ -97,7 +101,24 @@ const ProviderCard = React.forwardRef(({
       yandexgpt: '🔍',
       gigachat: '💼',
       anthropic: '🧠',
-      deepseek: '🔍'
+      deepseek: '🔍',
+      veo3: '🚀',
+      imagen: '🌈',
+      elevenlabs: '🎤',
+      suno: '🎵',
+      udio: '🎼',
+      mubert: '🎧',
+      'openai-tts': '🔊',
+      runway: '🎬',
+      pika: '⚡',
+      sora: '🎥',
+      'stable-video': '🎞️',
+      luma: '🎭',
+      midjourney: '🎨',
+      dalle: '🖼️',
+      'stable-diffusion': '🎭',
+      firefly: '✨',
+      leonardo: '🎪',
     };
     return icons[provider] || '🤖';
   };
@@ -110,7 +131,24 @@ const ProviderCard = React.forwardRef(({
       yandexgpt: 'Yandex GPT',
       gigachat: 'GigaChat',
       anthropic: 'Anthropic',
-      deepseek: 'DeepSeek'
+      deepseek: 'DeepSeek',
+      veo3: 'Google Veo3',
+      imagen: 'Google Imagen',
+      elevenlabs: 'ElevenLabs',
+      suno: 'Suno AI',
+      udio: 'Udio',
+      mubert: 'Mubert',
+      'openai-tts': 'OpenAI TTS',
+      runway: 'Runway Gen-3',
+      pika: 'Pika Labs',
+      sora: 'OpenAI Sora',
+      'stable-video': 'Stable Video Diffusion',
+      luma: 'Luma AI',
+      midjourney: 'Midjourney',
+      dalle: 'DALL-E 3',
+      'stable-diffusion': 'Stable Diffusion XL',
+      firefly: 'Adobe Firefly',
+      leonardo: 'Leonardo AI',
     };
     return names[provider] || provider;
   };
@@ -389,6 +427,13 @@ const MultiChat = () => {
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState(null);
 
+  // State для категорий провайдеров
+  const [chatProviders, setChatProviders] = useState([]);
+  const [videoProviders, setVideoProviders] = useState([]);
+  const [imageProviders, setImageProviders] = useState([]);
+  const [audioProviders, setAudioProviders] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('chat'); // По умолчанию выбраны "Основные"
+
   const [customSystemPrompt, setCustomSystemPrompt] = useState(() => {
     const saved = localStorage.getItem('multichat_custom_system_prompt');
     return saved || '';
@@ -484,7 +529,7 @@ const MultiChat = () => {
       loadCustomPrompt();
       loadUserChatHistories(); // Загружаем историю чатов пользователя
     }
-  }, [csrfToken, user?._id]);
+  }, [csrfToken, user?._id, selectedCategory]);
 
   const scrollToBottom = (provider) => {
     const chatRef = chatRefs.current[provider];
@@ -581,7 +626,35 @@ const MultiChat = () => {
         const data = await response.json();
         const aiSettingsData = await aiSettingsResponse.json();
 
-        const providers = data.activeProviders || [];
+        const allActiveProviders = data.activeProviders || [];
+        
+        // Категоризация активных провайдеров
+        const categorizedChatProviders = [];
+        const categorizedVideoProviders = [];
+        const categorizedImageProviders = [];
+        const categorizedAudioProviders = [];
+
+        allActiveProviders.forEach(providerKey => {
+          const config = aiModelsConfig[providerKey];
+          if (config) {
+            if (config.type === 'chat') {
+              categorizedChatProviders.push(providerKey);
+            } else if (config.type === 'video') {
+              categorizedVideoProviders.push(providerKey);
+            } else if (config.type === 'image') {
+              categorizedImageProviders.push(providerKey);
+            } else if (config.type === 'audio') {
+              categorizedAudioProviders.push(providerKey);
+            }
+          }
+        });
+
+        setChatProviders(categorizedChatProviders);
+        setVideoProviders(categorizedVideoProviders);
+        setImageProviders(categorizedImageProviders);
+        setAudioProviders(categorizedAudioProviders);
+        setActiveProviders(allActiveProviders); // Сохраняем все активные провайдеры для общей логики
+        
         let fetchedCurrentChatId = aiSettingsData.aiSettings.currentChatId;
 
         if (!fetchedCurrentChatId) {
@@ -610,24 +683,26 @@ const MultiChat = () => {
           try {
             const orderedProviders = JSON.parse(savedOrder);
             // Filter out any providers that are no longer active
-            const validOrderedProviders = orderedProviders.filter(p => providers.includes(p));
+            const validOrderedProviders = orderedProviders.filter(p => allActiveProviders.includes(p));
             // Add any new active providers that were not in the saved order
-            const newProviders = providers.filter(p => !validOrderedProviders.includes(p));
+            const newProviders = allActiveProviders.filter(p => !validOrderedProviders.includes(p));
             const finalProviders = [...validOrderedProviders, ...newProviders];
-            setActiveProviders(finalProviders);
             setSelectedProviders(finalProviders);
           } catch (e) {
-            // If parsing fails, fall back to default
-            setActiveProviders(providers);
-            setSelectedProviders(providers);
+            // Если парсинг не удался, возвращаемся ко всем активным провайдерам
+            setSelectedProviders(allActiveProviders); // Инициализируем всеми активными провайдерами
           }
         } else {
-          setActiveProviders(providers);
-          setSelectedProviders(providers);
+          setSelectedProviders(allActiveProviders); // Инициализируем всеми активными провайдерами, если нет сохраненного порядка
         }
         
+        // После обновления selectedProviders (из localStorage или по умолчанию),
+        // фильтруем их по текущей выбранной категории для инициализации ответов.
+        const providersToInitialize = selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory);
+        
         const initialResponses = {};
-        providers.forEach(provider => {
+        // Инициализируем ответы только для текущих выбранных провайдеров
+        providersToInitialize.forEach(provider => {
           initialResponses[provider] = { status: 'idle', content: '', error: '' };
           if (fetchedCurrentChatId) {
             loadChatHistory(provider, fetchedCurrentChatId);
@@ -909,15 +984,16 @@ const MultiChat = () => {
     setResponses(resetResponses);
 
     try {
-      // Отправляем сообщения всем провайдерам по отдельности
-      const promises = selectedProviders.map(provider => sendToProvider(provider, message));
+      // Отправляем сообщения только выбранным провайдерам в текущей категории
+      const providersInCurrentCategory = selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory);
+      const promises = providersInCurrentCategory.map(provider => sendToProvider(provider, message));
       
       // Используем Promise.allSettled для обработки всех результатов, даже если есть ошибки
       const results = await Promise.allSettled(promises);
       
       // Обновляем ответы для каждого провайдера на основе результатов Promise.allSettled
       results.forEach((result, index) => {
-        const provider = selectedProviders[index];
+        const provider = providersInCurrentCategory[index];
         if (result.status === 'fulfilled') {
           // Предполагаем, что sendToProvider уже обновил responses, если был успех
           // Если sendToProvider возвращает что-то, это можно обработать здесь.
@@ -1167,30 +1243,47 @@ const MultiChat = () => {
     URL.revokeObjectURL(url);
   };
 
-  const getProviderIcon = (provider) => {
-    const icons = {
+  const getProviderIcon = (providerKey) => {
+    // Объединяем иконки из aiModelsConfig и дефолтные иконки
+    const allIcons = {};
+    for (const key in aiModelsConfig) {
+      if (aiModelsConfig[key].icon) {
+        allIcons[key] = aiModelsConfig[key].icon;
+      }
+    }
+    
+    const defaultIcons = {
       openai: '🤖',
       gemini: '🌟',
       xai: '🚀',
       yandexgpt: '🔍',
       gigachat: '💼',
       anthropic: '🧠',
-      deepseek: '🔍'
+      deepseek: '🔍',
+      veo3: '🚀',
+      imagen: '🌈',
+      elevenlabs: '🎤',
+      suno: '🎵',
+      udio: '🎼',
+      mubert: '🎧',
+      'openai-tts': '🔊',
+      runway: '🎬',
+      pika: '⚡',
+      sora: '🎥',
+      'stable-video': '🎞️',
+      luma: '🎭',
+      midjourney: '🎨',
+      dalle: '🖼️',
+      'stable-diffusion': '🎭',
+      firefly: '✨',
+      leonardo: '🎪',
     };
-    return icons[provider] || '🤖';
+
+    return allIcons[providerKey] || defaultIcons[providerKey] || '🤖';
   };
 
-  const getProviderName = (provider) => {
-    const names = {
-      openai: 'OpenAI',
-      gemini: 'Google Gemini',
-      xai: 'xAI',
-      yandexgpt: 'Yandex GPT',
-      gigachat: 'GigaChat',
-      anthropic: 'Anthropic',
-      deepseek: 'DeepSeek'
-    };
-    return names[provider] || provider;
+  const getProviderName = (providerKey) => {
+    return aiModelsConfig[providerKey]?.label || providerKey;
   };
 
   const getStatusIcon = (status) => {
@@ -1422,7 +1515,116 @@ const MultiChat = () => {
            )}
 
              {/* Выбор провайдеров */}
-             <div className="space-y-2">
+             <Tabs defaultValue="chat" className="w-full" value={selectedCategory} onValueChange={setSelectedCategory}>
+               <TabsList className="grid w-full grid-cols-4">
+                 <TabsTrigger value="chat" className="flex items-center gap-2">
+                   <MessageSquare className="w-4 h-4" />
+                   Основные
+                 </TabsTrigger>
+                 <TabsTrigger value="video" className="flex items-center gap-2">
+                   <Video className="w-4 h-4" />
+                   Видео
+                 </TabsTrigger>
+                 <TabsTrigger value="audio" className="flex items-center gap-2">
+                   <Music className="w-4 h-4" />
+                   Аудио
+                 </TabsTrigger>
+                 <TabsTrigger value="image" className="flex items-center gap-2">
+                   <Image className="w-4 h-4" />
+                   Изображения
+                 </TabsTrigger>
+               </TabsList>
+
+               {/* Контент вкладок */}
+               <TabsContent value="chat" className="mt-6">
+                 <Label className="text-sm font-medium mb-2 block">Выберите основные провайдеры:</Label>
+                 <div className="flex flex-wrap gap-2">
+                   {chatProviders.map(provider => (
+                     <Button
+                       key={provider}
+                       variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                       size="sm"
+                       onClick={() => toggleProvider(provider)}
+                       className="flex items-center gap-2"
+                     >
+                       <span>{getProviderIcon(provider)}</span>
+                       {getProviderName(provider)}
+                     </Button>
+                   ))}
+                 </div>
+               </TabsContent>
+
+               <TabsContent value="video" className="mt-6">
+                 <Label className="text-sm font-medium mb-2 block">Выберите видео провайдеры:</Label>
+                 <div className="flex flex-wrap gap-2">
+                   {videoProviders.map(provider => (
+                     <Button
+                       key={provider}
+                       variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                       size="sm"
+                       onClick={() => toggleProvider(provider)}
+                       className="flex items-center gap-2"
+                     >
+                       <span>{getProviderIcon(provider)}</span>
+                       {getProviderName(provider)}
+                     </Button>
+                   ))}
+                 </div>
+               </TabsContent>
+
+               <TabsContent value="audio" className="mt-6">
+                 <Label className="text-sm font-medium mb-2 block">Выберите аудио провайдеры:</Label>
+                 <div className="flex flex-wrap gap-2">
+                   {audioProviders.length > 0 ? (
+                     audioProviders.map(provider => (
+                       <Button
+                         key={provider}
+                         variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                         size="sm"
+                         onClick={() => toggleProvider(provider)}
+                         className="flex items-center gap-2"
+                       >
+                         <span>{getProviderIcon(provider)}</span>
+                         {getProviderName(provider)}
+                       </Button>
+                     ))
+                   ) : (
+                     <p className="text-gray-500 text-sm">Аудио провайдеры пока недоступны.</p>
+                   )}
+                 </div>
+               </TabsContent>
+
+               <TabsContent value="image" className="mt-6">
+                 <Label className="text-sm font-medium mb-2 block">Выберите провайдеры изображений:</Label>
+                 <div className="flex flex-wrap gap-2">
+                   {imageProviders.map(provider => (
+                     <Button
+                       key={provider}
+                       variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                       size="sm"
+                       onClick={() => toggleProvider(provider)}
+                       className="flex items-center gap-2"
+                     >
+                       <span>{getProviderIcon(provider)}</span>
+                       {getProviderName(provider)}
+                     </Button>
+                   ))}
+                 </div>
+               </TabsContent>
+             </Tabs>
+                        {/* Статистика */}
+           {stats.total > 0 && (
+             <div className="flex items-center gap-4 mb-4 mt-6">
+               <Badge variant="secondary">{stats.total} провайдеров</Badge>
+               {stats.success > 0 && <Badge variant="default" className="bg-green-100 text-green-800">{stats.success} успешно</Badge>}
+               {stats.error > 0 && <Badge variant="destructive">{stats.error} ошибок</Badge>}
+               {stats.loading > 0 && <Badge variant="outline" className="bg-blue-100 text-blue-800">{stats.loading} загрузка</Badge>}
+             </div>
+           )}
+
+             {/* Выбор провайдеров */}
+             {/* Этот блок заменен Tabs UI, поэтому он больше не нужен */}
+             {/* <div className="space-y-2">
                <Label className="text-sm font-medium">Выберите провайдеры:</Label>
                {activeProviders.length > 0 ? (
                  <div className="space-y-3">
@@ -1477,7 +1679,45 @@ const MultiChat = () => {
                    </p>
                  </div>
                )}
-             </div>
+             </div> */}
+             
+             {selectedProviders.length > 0 && ( // Показываем только если есть выбранные провайдеры
+               <div className="space-y-2 mt-4">
+                 <div className="flex items-center gap-2 text-sm text-gray-600">
+                   <Zap className="h-4 w-4" />
+                   <span>
+                     Будет списано: <strong>{selectedProviders.length} токенов</strong> 
+                     (по 1 за каждый провайдер)
+                   </span>
+                 </div>
+                 
+                 <div className="flex items-center gap-2 text-sm text-gray-600">
+                   <MessageSquare className="h-4 w-4" />
+                   <span>
+                     Максимум сообщений в чате: <strong>{getMaxMessageCount()}/50</strong>
+                   </span>
+                 </div>
+                 
+                 {checkMessageLimit() && (
+                   <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                     <AlertTriangle className="h-4 w-4" />
+                     <span>
+                       Достигнут лимит в 50 сообщений. Очистите контекст для продолжения.
+                     </span>
+                   </div>
+                 )}
+               </div>
+             )}
+           
+             {activeProviders.length === 0 && (
+               <div className="text-center py-4">
+                 <p className="text-gray-500 mb-2">Нет активных AI провайдеров</p>
+                 <p className="text-sm text-gray-400">
+                   Перейдите в раздел "Настройки AI" и включите нужные провайдеры
+                 </p>
+               </div>
+             )}
+           
                     </CardContent>
             )}
        </Card>
@@ -1584,10 +1824,10 @@ const MultiChat = () => {
                     onDragEnd={handleDragEnd}
                   >
                     <SortableContext 
-                      items={selectedProviders}
+                      items={selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory)}
                       strategy={verticalListSortingStrategy}
                     >
-                      {selectedProviders.map(provider => (
+                      {selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
                         <SortableProviderCard 
                           key={provider} 
                           provider={provider}

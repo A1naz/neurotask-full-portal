@@ -28,7 +28,7 @@ const chatHistorySchema = new mongoose.Schema({
   provider: {
     type: String,
     required: true,
-    enum: ['openai', 'gemini', 'anthropic', 'xai', 'yandexgpt', 'gigachat', 'mistral', 'cohere', 'huggingface', 'replicate', 'deepseek'],
+    enum: ['openai', 'gemini', 'anthropic', 'xai', 'yandexgpt', 'gigachat', 'mistral', 'cohere', 'huggingface', 'replicate', 'deepseek', 'veo3', 'imagen'],
     index: true
   },
   

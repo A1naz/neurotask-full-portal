@@ -75,12 +75,19 @@ const ProviderCard = React.forwardRef(({
   chatRef,
   dragHandleListeners,
   onSendMessage, // Новое свойство для отправки сообщения
+  onImageUpload, // Новое свойство для обработки загрузки изображения
   ...props 
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
   const [individualMessage, setIndividualMessage] = useState(''); // Состояние для индивидуального сообщения
   const [showInputField, setShowInputField] = useState(false);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null); // Добавляем ref для скрытого input file
+  const imageUploadButtonRef = useRef(null); // Добавляем ref для кнопки загрузки изображения
+
+  const [selectedImageFile, setSelectedImageFile] = useState(null); // Новое состояние для файла изображения
+  const [selectedImageUrl, setSelectedImageUrl] = useState(null);   // Новое состояние для URL изображения
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // Новое состояние для отслеживания загрузки изображения
 
   useEffect(() => {
     // Remove the old localStorage item if it exists
@@ -92,6 +99,12 @@ const ProviderCard = React.forwardRef(({
       inputRef.current.focus();
     }
   }, [showInputField]);
+
+  // Очистка выбранного изображения при смене провайдера
+  useEffect(() => {
+    setSelectedImageFile(null);
+    setSelectedImageUrl(null);
+  }, [provider]);
 
   const getProviderIcon = (provider) => {
     const icons = {
@@ -183,10 +196,39 @@ const ProviderCard = React.forwardRef(({
     navigator.clipboard.writeText(content);
   };
   
+  const handleImageSelect = async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedImageFile(file);
+      setSelectedImageUrl(URL.createObjectURL(file)); // Для немедленного предпросмотра
+      setIsUploadingImage(true); // Начинаем загрузку
+      try {
+        const uploadedUrl = await onImageUpload(provider, file); // Вызываем родительскую функцию загрузки
+        setSelectedImageUrl(uploadedUrl); // Обновляем URL на тот, что вернул бэкенд
+      } catch (error) {
+        console.error("Ошибка при загрузке изображения:", error);
+        setSelectedImageFile(null);
+        setSelectedImageUrl(null);
+        // Можно добавить отображение ошибки пользователю
+      } finally {
+        setIsUploadingImage(false); // Загрузка завершена
+      }
+    }
+  };
+
+  const handleClearImage = () => {
+    setSelectedImageFile(null);
+    setSelectedImageUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Очищаем input file
+    }
+  };
+
   const handleSend = () => {
-    if (individualMessage.trim()) {
-      onSendMessage(provider, individualMessage.trim());
+    if (individualMessage.trim() || selectedImageFile) {
+      onSendMessage(provider, individualMessage.trim(), selectedImageUrl); // Передаем URL изображения
       setIndividualMessage(''); // Очищаем поле после отправки
+      handleClearImage(); // Очищаем выбранное изображение
     }
   };
 
@@ -355,21 +397,73 @@ const ProviderCard = React.forwardRef(({
       {/* Поле ввода для индивидуального сообщения */}
       {showInputField ? (
         <div className="p-2 border-t">
+          {(selectedImageUrl || isUploadingImage) && (
+            <div className="flex justify-end mb-2 relative h-[100px]"> {/* Добавлена фиксированная высота для загрузки */}
+              {isUploadingImage ? (
+                <div className="flex items-center justify-center w-[100px] h-[100px] bg-gray-100 rounded-md">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                </div>
+              ) : (
+                <>
+                  <img src={selectedImageUrl} alt="Preview" className="max-w-[100px] max-h-[100px] object-cover rounded-md" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-6 w-6 p-0 bg-white/70 hover:bg-white"
+                    onClick={handleClearImage}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex gap-2 items-center">
+            {(provider === 'veo3' || provider === 'imagen') && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3"
+                  title="Загрузить изображение"
+                  ref={imageUploadButtonRef} // Привязываем ref к кнопке
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             <Textarea
               ref={inputRef}
               placeholder={`Запрос для ${getProviderName(provider)}...`}
               value={individualMessage}
               onChange={(e) => setIndividualMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              onBlur={() => { if (!individualMessage.trim()) setShowInputField(false); }}
+              onBlur={(e) => {
+                // Проверяем, куда ушел фокус
+                if (
+                  !individualMessage.trim() &&
+                  !selectedImageFile &&
+                  e.relatedTarget !== fileInputRef.current &&
+                  e.relatedTarget !== imageUploadButtonRef.current
+                ) {
+                  setShowInputField(false);
+                }
+              }}
               className="min-h-[40px] resize-none text-sm"
               rows={1}
             />
             <Button
               size="sm"
               onClick={handleSend}
-              disabled={!individualMessage.trim() || isLoading}
+              disabled={(!individualMessage.trim() && !selectedImageFile) || isLoading || isUploadingImage} // Добавляем isUploadingImage
               className="px-6"
             >
               <Send className="h-4 w-4" />
@@ -484,6 +578,8 @@ const MultiChat = () => {
   const [userChatHistories, setUserChatHistories] = useState([]); // Новое состояние для истории чатов пользователя
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
   const [isFirstMessage, setIsFirstMessage] = useState(true); // Состояние для отслеживания первого сообщения в новом чате
+
+  const [providerImageFiles, setProviderImageFiles] = useState({}); // Новое состояние для файлов изображений
 
   const loadUserChatHistories = async () => {
     if (!csrfToken || !user?._id) return;
@@ -1379,6 +1475,56 @@ const MultiChat = () => {
     }
   };
 
+  const handleImageUpload = async (provider, imageFile) => {
+    if (!imageFile) return;
+
+    // Удаляем предыдущую запись, чтобы не мешала новому состоянию загрузки
+    setResponses(prev => ({ ...prev, [provider]: { ...prev[provider], imageUrl: null, error: '' } }));
+
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/upload/vk-cloud`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Обновляем состояние с URL изображения только после успешной загрузки
+        setResponses(prev => ({
+          ...prev,
+          [provider]: { ...prev[provider], status: 'idle', imageUrl: data.imageUrl, error: '' }
+        }));
+        // Сохраняем файл изображения для этого провайдера, если нужно
+        setProviderImageFiles(prev => ({ ...prev, [provider]: imageFile }));
+        return data.imageUrl; // Возвращаем URL
+      } else {
+        const errorData = await response.json();
+        const errorMessage = `Ошибка загрузки изображения: ${errorData.message || 'Неизвестная ошибка'}`;
+        setResponses(prev => ({
+          ...prev,
+          [provider]: { ...prev[provider], status: 'error', error: errorMessage }
+        }));
+        throw new Error(errorMessage); // Выбрасываем ошибку
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки изображения:', error);
+      const errorMessage = 'Ошибка сети при загрузке изображения';
+      setResponses(prev => ({
+        ...prev,
+        [provider]: { ...prev[provider], status: 'error', error: errorMessage }
+      }));
+      throw new Error(errorMessage); // Выбрасываем ошибку
+    }
+  };
+
   return (
     <div className="flex flex-col h-full p-6 relative">
       {/* Боковая панель для истории чатов */}
@@ -1841,6 +1987,7 @@ const MultiChat = () => {
                           onResizeStart={(e, p) => handleResizeStart(e, p)}
                           chatRef={el => chatRefs.current[provider] = el}
                           onSendMessage={sendToProvider} // Передаем функцию
+                          onImageUpload={handleImageUpload} // Передаем функцию
                         />
                       ))}
                     </SortableContext>

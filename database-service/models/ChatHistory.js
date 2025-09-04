@@ -43,6 +43,10 @@ const chatHistorySchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    imageUrl: {
+      type: String,
+      required: false // Поле imageUrl не является обязательным
+    },
     timestamp: {
       type: Date,
       default: Date.now
@@ -70,10 +74,11 @@ chatHistorySchema.index({ userId: 1, chatId: 1, provider: 1 }, { unique: true })
 chatHistorySchema.index({ lastActivity: -1 });
 
 // Метод для добавления сообщения
-chatHistorySchema.methods.addMessage = function(role, content) {
+chatHistorySchema.methods.addMessage = function(role, content, imageUrl = null) {
   this.messages.push({
     role,
     content,
+    ...(imageUrl && { imageUrl }), // Добавляем imageUrl, только если он предоставлен
     timestamp: new Date()
   });
   this.lastActivity = new Date();

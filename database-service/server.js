@@ -202,6 +202,8 @@ app.use('/api/ai-keys', require('./routes/ai-keys'));
 // Provider Order Endpoints
 app.use('/api/provider-order', providerOrderRoutes);
 
+// Image Upload Endpoints
+app.use('/api/upload', require('./routes/upload'));
 
 // Обработка ошибок
 app.use((err, req, res, next) => {

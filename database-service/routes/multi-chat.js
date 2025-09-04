@@ -13,7 +13,7 @@ const mongoose = require("mongoose");
 router.post("/:provider", requireApiKey, async (req, res) => {
   try {
     const { provider } = req.params;
-    const { message, systemPrompt, chatId } = req.body;
+    const { message, systemPrompt, chatId, imageUrl } = req.body; // Добавляем imageUrl
 
     if (!message) {
       return res.status(400).json({
@@ -48,7 +48,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       defaultChatTitle
     );
     // Добавляем сообщение пользователя
-    await chatHistory.addMessage("user", message);
+    await chatHistory.addMessage("user", message, imageUrl); // Передаем imageUrl
     console.log("🔍 provider", chatHistory);
     
     // 🔍 ЗАГРУЖАЕМ КОНТЕКСТ ИЗ ИСТОРИИ ЧАТА
@@ -97,6 +97,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
+            ...(imageUrl && (provider === 'veo3' || provider === 'imagen') && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
           },
           {
             timeout: 30000,

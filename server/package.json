@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.18.0",
+    "@aws-sdk/client-s3": "^3.882.0",
     "@google/generative-ai": "^0.21.0",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-scroll-area": "^1.2.9",
@@ -27,13 +28,15 @@
     "helmet": "^7.0.0",
     "https-proxy-agent": "^7.0.6",
     "morgan": "^1.10.0",
+    "multer": "^2.0.2",
     "node-fetch": "^2.7.0",
     "node-telegram-bot-api": "^0.64.0",
     "nodemailer": "^7.0.5",
     "openai": "^4.28.0",
     "recharts": "^3.1.0",
     "session-file-store": "^1.5.0",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

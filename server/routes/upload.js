@@ -13,26 +13,28 @@ router.post('/vk-cloud', upload.single('image'), async (req, res) => {
     return res.status(400).json({ message: 'Изображение не найдено' });
   }
 
-  const { VK_ACCESS_KEY, VK_SECRET_KEY, VK_CLOUD_BUCKET, VK_CLOUD_ENDPOINT } = process.env;
-
-  if (!VK_ACCESS_KEY || !VK_SECRET_KEY || !VK_CLOUD_BUCKET || !VK_CLOUD_ENDPOINT) {
+  const { VK_ACCESS_KEY, VK_SECRET_KEY } = process.env;
+  console.log(VK_ACCESS_KEY, VK_SECRET_KEY);
+  if (!VK_ACCESS_KEY || !VK_SECRET_KEY ) {
     console.error('VK Cloud Storage credentials are not set.');
     return res.status(500).json({ message: 'Ошибка конфигурации VK Cloud Storage.' });
   }
 
   const s3Client = new S3Client({
-    region: 'us-east-1', // Регион по умолчанию, VK Cloud не использует его активно
-    endpoint: VK_CLOUD_ENDPOINT,
+    region: 'ru-central1', // Регион по умолчанию, VK Cloud не использует его активно
+    endpoint: "https://hb.vkcs.cloud",
     credentials: {
       accessKeyId: VK_ACCESS_KEY,
       secretAccessKey: VK_SECRET_KEY,
     },
   });
 
-  const fileName = `images/${uuidv4()}-${req.file.originalname}`;
+ 
+
+  const fileName = `neurotask/uploadedImages/${uuidv4()}-${req.file.originalname}`;
 
   const params = {
-    Bucket: VK_CLOUD_BUCKET,
+    Bucket: "ozonmpportal",
     Key: fileName,
     Body: req.file.buffer,
     ContentType: req.file.mimetype,
@@ -41,7 +43,7 @@ router.post('/vk-cloud', upload.single('image'), async (req, res) => {
 
   try {
     await s3Client.send(new PutObjectCommand(params));
-    const imageUrl = `${VK_CLOUD_ENDPOINT}/${VK_CLOUD_BUCKET}/${fileName}`;
+    const imageUrl = `https://hb.vkcs.cloud/ozonmpportal/${fileName}`;
     res.status(200).json({ imageUrl });
   } catch (error) {
     console.error('Ошибка загрузки в VK Cloud Storage:', error);

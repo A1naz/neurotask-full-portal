@@ -237,6 +237,7 @@ app.use('/api/chat-naming', async (req, res) => {
 
 // 🔍 МАРШРУТЫ ДЛЯ SELECTED-PROVIDERS (прокси к database-service)
 app.use('/api/selected-providers', require('./routes/selected-providers'));
+app.use('/api/upload', require('./routes/upload'));
 
 // Запуск сервера
 app.listen(PORT, () => {

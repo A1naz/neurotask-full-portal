@@ -89,6 +89,10 @@ const ProviderCard = React.forwardRef(({
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);   // Новое состояние для URL изображения
   const [isUploadingImage, setIsUploadingImage] = useState(false); // Новое состояние для отслеживания загрузки изображения
 
+  const [isDraggingOver, setIsDraggingOver] = useState(false); // Состояние для отслеживания перетаскивания файла
+  const [droppedFile, setDroppedFile] = useState(null); // Состояние для хранения перетащенного файла
+  const [dragDropError, setDragDropError] = useState(''); // Состояние для ошибок drag & drop
+
   useEffect(() => {
     // Remove the old localStorage item if it exists
     localStorage.removeItem(`multichat_input_collapsed_${provider}`);
@@ -222,13 +226,36 @@ const ProviderCard = React.forwardRef(({
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Очищаем input file
     }
+    setDroppedFile(null); // Очищаем перетащенный файл
+    setDragDropError(''); // Очищаем ошибку перетаскивания
   };
 
-  const handleSend = () => {
-    if (individualMessage.trim() || selectedImageFile) {
-      onSendMessage(provider, individualMessage.trim(), selectedImageUrl); // Передаем URL изображения
+  const handleSend = async () => {
+    if (individualMessage.trim() || selectedImageFile || droppedFile) {
+      let imageUrlToUse = selectedImageUrl;
+      let fileToUpload = selectedImageFile;
+
+      if (droppedFile) {
+        fileToUpload = droppedFile;
+        setIsUploadingImage(true); // Устанавливаем состояние загрузки
+        try {
+          const uploadedUrl = await onImageUpload(provider, droppedFile); // Загружаем перетащенный файл
+          imageUrlToUse = uploadedUrl;
+        } catch (error) {
+          console.error("Ошибка при загрузке перетащенного файла:", error);
+          setIsUploadingImage(false); // Сбрасываем состояние загрузки при ошибке
+          setDragDropError('Ошибка при загрузке файла. Попробуйте еще раз.');
+          setTimeout(() => setDragDropError(''), 3000);
+          return; // Прекращаем отправку, если загрузка не удалась
+        } finally {
+          setIsUploadingImage(false); // Сбрасываем состояние загрузки
+        }
+      }
+
+      onSendMessage(provider, individualMessage.trim(), imageUrlToUse); // Передаем URL изображения
       setIndividualMessage(''); // Очищаем поле после отправки
       handleClearImage(); // Очищаем выбранное изображение
+      setDroppedFile(null); // Очищаем перетащенный файл
     }
   };
 
@@ -239,12 +266,66 @@ const ProviderCard = React.forwardRef(({
     }
   };
   
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Over', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Enter', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Leave', provider);
+    if (!e.currentTarget.contains(e.relatedTarget)) { // Проверяем, не перетаскиваем ли внутри элемента
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop', provider);
+    setIsDraggingOver(false);
+    setDragDropError('');
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        setDroppedFile(file);
+        setSelectedImageFile(null); // Очищаем выбранный файл, если есть
+        setSelectedImageUrl(null); // Очищаем URL, если есть
+        setIndividualMessage(''); // Очищаем текстовое сообщение
+      } else {
+        setDragDropError('Поддерживаются только изображения и видеофайлы.');
+        setTimeout(() => setDragDropError(''), 3000);
+      }
+    }
+  };
+
+  const handleClearDroppedFile = () => {
+    setDroppedFile(null);
+    setDragDropError('');
+  };
+
   return (
     <Card 
       ref={ref}
       {...props}
       data-provider={provider}
-      className={`${getStatusColor(response?.status || 'idle')} relative flex-shrink-0 transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`}
+      className={cn(
+        `${getStatusColor(response?.status || 'idle')} relative flex-shrink-0 transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`,
+        {
+          'border-2 border-dashed border-blue-500 bg-blue-50': isDraggingOver,
+        }
+      )}
       style={{
         width: isExpanded ? '100%' : (size.width ? `${size.width}px` : '400px'),
         height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : '500px'),
@@ -308,7 +389,13 @@ const ProviderCard = React.forwardRef(({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0 pb-0 !px-2 flex flex-col flex-1 min-h-0">
+      <CardContent className={cn("pt-0 pb-0 !px-2 flex flex-col flex-1 min-h-0", {
+        'border-2 border-dashed border-blue-500 bg-blue-50': isDraggingOver,
+      })}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}>
         {history && history.length > 0 && (
           <div 
             ref={chatRef}
@@ -382,6 +469,12 @@ const ProviderCard = React.forwardRef(({
             )}
           </Alert>
         )}
+        {dragDropError && (
+          <Alert variant="destructive" className="mt-2 p-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">{dragDropError}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
       {!isExpanded && (
         <div 
@@ -424,7 +517,7 @@ const ProviderCard = React.forwardRef(({
                 <input
                   type="file"
                   ref={fileInputRef}
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="hidden"
                   onChange={handleImageSelect}
                 />
@@ -433,7 +526,7 @@ const ProviderCard = React.forwardRef(({
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   className="px-3"
-                  title="Загрузить изображение"
+                  title="Загрузить изображение или видео"
                   ref={imageUploadButtonRef} // Привязываем ref к кнопке
                 >
                   <Plus className="h-4 w-4" />
@@ -452,7 +545,8 @@ const ProviderCard = React.forwardRef(({
                   !individualMessage.trim() &&
                   !selectedImageFile &&
                   e.relatedTarget !== fileInputRef.current &&
-                  e.relatedTarget !== imageUploadButtonRef.current
+                  e.relatedTarget !== imageUploadButtonRef.current &&
+                  !droppedFile // Добавляем проверку на droppedFile
                 ) {
                   setShowInputField(false);
                 }
@@ -463,12 +557,23 @@ const ProviderCard = React.forwardRef(({
             <Button
               size="sm"
               onClick={handleSend}
-              disabled={(!individualMessage.trim() && !selectedImageFile) || isLoading || isUploadingImage} // Добавляем isUploadingImage
+              disabled={(!individualMessage.trim() && !selectedImageFile && !droppedFile) || isLoading || isUploadingImage}
               className="px-6"
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
+          {droppedFile && (
+            <div className="mt-2 p-2 border rounded-md flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {droppedFile.type.startsWith('image/') ? <Image className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+                <span>{droppedFile.name}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleClearDroppedFile}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <Button
@@ -951,7 +1056,8 @@ const MultiChat = () => {
         body: JSON.stringify({ 
           message: messageToSend.trim(),
           systemPrompt: systemPrompt,
-          chatId: currentChatId // Передаем currentChatId
+          chatId: currentChatId, // Передаем currentChatId
+          ...(providerImageFiles[provider] && { imageUrl: providerImageFiles[provider].url }) // Используем загруженный URL, если есть
         }),
       });
 
@@ -1082,7 +1188,10 @@ const MultiChat = () => {
     try {
       // Отправляем сообщения только выбранным провайдерам в текущей категории
       const providersInCurrentCategory = selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory);
-      const promises = providersInCurrentCategory.map(provider => sendToProvider(provider, message));
+      const promises = providersInCurrentCategory.map(provider => {
+        const messageContent = message.trim();
+        return sendToProvider(provider, messageContent);
+      });
       
       // Используем Promise.allSettled для обработки всех результатов, даже если есть ошибки
       const results = await Promise.allSettled(promises);
@@ -1503,7 +1612,7 @@ const MultiChat = () => {
           [provider]: { ...prev[provider], status: 'idle', imageUrl: data.imageUrl, error: '' }
         }));
         // Сохраняем файл изображения для этого провайдера, если нужно
-        setProviderImageFiles(prev => ({ ...prev, [provider]: imageFile }));
+        setProviderImageFiles(prev => ({ ...prev, [provider]: { url: data.imageUrl } }));
         return data.imageUrl; // Возвращаем URL
       } else {
         const errorData = await response.json();
@@ -1523,6 +1632,60 @@ const MultiChat = () => {
       }));
       throw new Error(errorMessage); // Выбрасываем ошибку
     }
+  };
+
+  // Обработчики событий Drag & Drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Over', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Enter', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Leave', provider);
+    if (!e.currentTarget.contains(e.relatedTarget)) { // Проверяем, не перетаскиваем ли внутри элемента
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop', provider);
+    setIsDraggingOver(false);
+    setDragDropError('');
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        setDroppedFile(file);
+        setSelectedImageFile(null); // Очищаем выбранный файл, если есть
+        setSelectedImageUrl(null); // Очищаем URL, если есть
+        setIndividualMessage(''); // Очищаем текстовое сообщение
+      } else {
+        setDragDropError('Поддерживаются только изображения и видеофайлы.');
+        setTimeout(() => setDragDropError(''), 3000);
+      }
+    }
+  };
+
+  const handleClearDroppedFile = () => {
+    setDroppedFile(null);
+    setDragDropError('');
+  };
+
+  const handleProviderImageUpload = (provider, file) => {
+    return handleImageUpload(provider, file);
   };
 
   return (
@@ -1564,7 +1727,9 @@ const MultiChat = () => {
       </div>
 
       {/* Основная область с прокруткой */}
-       <div className="flex-1 overflow-y-auto pb-4">
+       <div 
+        className="flex-1 overflow-y-auto pb-4"
+       >
         {/* Фиксированная область сверху */}
         <div className="flex-shrink-0">
                  {/* Заголовок с кнопками управления */}
@@ -1987,7 +2152,7 @@ const MultiChat = () => {
                           onResizeStart={(e, p) => handleResizeStart(e, p)}
                           chatRef={el => chatRefs.current[provider] = el}
                           onSendMessage={sendToProvider} // Передаем функцию
-                          onImageUpload={handleImageUpload} // Передаем функцию
+                          onImageUpload={handleProviderImageUpload} // Передаем функцию
                         />
                       ))}
                     </SortableContext>
@@ -1999,6 +2164,7 @@ const MultiChat = () => {
                           history={chatHistories[activeId]}
                           isExpanded={expandedProviders[activeId]}
                           size={providerSizes[activeId]}
+                          onImageUpload={handleProviderImageUpload}
                         />
                       ) : null}
                     </DragOverlay>
@@ -2042,7 +2208,7 @@ const MultiChat = () => {
                  onChange={(e) => setMessage(e.target.value)}
                  onKeyPress={handleKeyPress}
                  className={`min-h-[50px] resize-none ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
-                 disabled={loading || selectedProviders.length === 0 || balance < 1}
+                 disabled={loading || selectedProviders.length === 0 || balance < 1} 
                />
              </div>
              <Button

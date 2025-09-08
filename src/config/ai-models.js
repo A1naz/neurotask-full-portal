@@ -2,10 +2,12 @@ export const aiModelsConfig = {
   yandexgpt: {
     label: "YandexGPT",
     models: ["yandexgpt-lite", "yandexgpt"],
+    type: 'chat',
   },
   xai: {
     label: "Grok",
     models: ["grok-4", "grok-3", "grok-3-mini"],
+    type: 'chat',
   },
   openai: {
     label: "OpenAI",
@@ -17,10 +19,12 @@ export const aiModelsConfig = {
       "gpt-4.1-nano",
       "gpt-4.1-mini",
     ],
+    type: 'chat',
   },
   gigachat: {
     label: "GigaChat",
     models: ["GigaChat-2-Pro", "GigaChat-2", "GigaChat-2-Max"],
+    type: 'chat',
   },
   gemini: {
     label: "Gemini",
@@ -30,10 +34,12 @@ export const aiModelsConfig = {
       "gemini-2.5-flash-image-preview",
       "gemini-2.0-flash",
     ],
+    type: 'chat',
   },
   deepseek: {
     label: "DeepSeek",
     models: ["deepseek-chat", "deepseek-reasoner"],
+    type: 'chat',
   },
   anthropic: {
     label: "Anthropic",
@@ -45,5 +51,16 @@ export const aiModelsConfig = {
       "claude-3-5-haiku-latest",
       "claude-3-haiku-20240307",
     ],
+    type: 'chat',
+  },
+  veo3: {
+    label: "Google Veo3",
+    models: ["veo-3.0-generate-001"],
+    type: 'video',
+  },
+  imagen: {
+    label: "Google Imagen",
+    models: ["imagen-4.0-generate-001", "imagen-3.0-generate-002"],
+    type: 'image',
   },
 };

@@ -20,13 +20,39 @@ const { sendVerificationEmail, resendVerificationEmail } = require('../utils/ema
 // Регистрация пользователя
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, username, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName } = req.body;
     
-    if (!email || !password || !username) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email, пароль и имя пользователя обязательны'
+        message: 'Email и пароль обязательны'
       });
+    }
+
+    // Автоматическая генерация имени пользователя
+    const baseUsername = email.split('@')[0];
+    let username = baseUsername;
+    let counter = 1;
+    let isUnique = false;
+
+    while (!isUnique) {
+      try {
+        const existingUserResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/username/${username}`, {
+          headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
+        });
+        
+        if (existingUserResponse.data.success) {
+          username = `${baseUsername}${counter++}`;
+        } else {
+          isUnique = true;
+        }
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          isUnique = true;
+        } else {
+          throw error;
+        }
+      }
     }
 
     // Проверяем, не существует ли уже пользователь с таким email
@@ -81,7 +107,7 @@ router.post('/register', async (req, res) => {
 
     // Отправляем email для верификации
     try {
-      await sendVerificationEmail(email, username, verificationCode);
+      await sendVerificationEmail(email, newUser.username, verificationCode);
     } catch (emailError) {
       // Удаляем пользователя, если не удалось отправить email
       await axios.delete(`${DATABASE_SERVICE_URL}/api/users/${newUser._id}`, {
@@ -577,6 +603,45 @@ router.put('/password', requireAuth, async (req, res) => {
       success: false,
       message: 'Ошибка изменения пароля'
     });
+  }
+});
+
+// Прокси-эндпоинт для запроса сброса пароля
+router.post('/request-password-reset', async (req, res) => {
+  try {
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/auth/request-password-reset`, req.body, {
+      headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('Server - Proxy request-password-reset error:', error);
+    res.status(error.response?.status || 500).json(error.response?.data || { success: false, message: 'Ошибка проксирования запроса сброса пароля' });
+  }
+});
+
+// Прокси-эндпоинт для проверки кода сброса пароля
+router.post('/verify-reset-code', async (req, res) => {
+  try {
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/auth/verify-reset-code`, req.body, {
+      headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('Server - Proxy verify-reset-code error:', error);
+    res.status(error.response?.status || 500).json(error.response?.data || { success: false, message: 'Ошибка проксирования проверки кода сброса пароля' });
+  }
+});
+
+// Прокси-эндпоинт для сброса пароля
+router.post('/reset-password', async (req, res) => {
+  try {
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/auth/reset-password`, req.body, {
+      headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('Server - Proxy reset-password error:', error);
+    res.status(error.response?.status || 500).json(error.response?.data || { success: false, message: 'Ошибка проксирования сброса пароля' });
   }
 });
 

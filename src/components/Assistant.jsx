@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Calendar, 
-  Bot, 
-  MessageSquare, 
+import {
+  Calendar,
+  Bot,
+  MessageSquare,
   Clock,
   AlertCircle,
   CheckCircle2,
@@ -21,80 +21,86 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDashboard } from '@/contexts/DashboardContext'; // Import useDashboard
 import TelegramBotManager from './TelegramBotManager';
 import IntegrationsManager from './IntegrationsManager';
 
 const Assistant = () => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
+  // const [dashboardData, setDashboardData] = useState(null); // Removed local state
+  // const [loading, setLoading] = useState(true); // Removed local state
+  // const [lastUpdate, setLastUpdate] = useState(null); // Removed local state
   const [previousMessageCount, setPreviousMessageCount] = useState(0);
   const [messageCountChanged, setMessageCountChanged] = useState(false);
 
   const { user, API_BASE } = useAuth();
+  const { dashboardData, loading, lastUpdate, fetchDashboardData } = useDashboard(); // Get from context
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchDashboardData();
-    
-    // Автоматическое обновление данных каждые 10 секунд
-    const interval = setInterval(() => {
-      fetchDashboardDataSilent();
-    }, 10000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // Remove initial fetch and auto-update useEffect
+  // useEffect(() => {
+  //   fetchDashboardData();
+  //
+  //   // Автоматическое обновление данных каждые 10 секунд
+  //   const interval = setInterval(() => {
+  //     fetchDashboardDataSilent();
+  //   }, 10000);
+  //
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // Отслеживаем изменения в dashboardData
   useEffect(() => {
     if (dashboardData) {
-      }
+      // console.log('🔍 Dashboard data updated:', dashboardData); // Logging can be handled in context
+    }
   }, [dashboardData]);
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/dashboard/data`, {
-        credentials: 'include',
-      });
+  // Remove fetchDashboardData and fetchDashboardDataSilent - handled by context
+  // const fetchDashboardData = async () => {
+  //   try {
+  //     const response = await fetch(`${API_BASE}/api/dashboard/data`, {
+  //       credentials: 'include',
+  //     });
 
-      if (response.ok) {
-        const data = await response.json();
-        setDashboardData(data);
-        setLastUpdate(new Date());
-      }
-    } catch (error) {
-      } finally {
-      setLoading(false);
-    }
-  };
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       setDashboardData(data);
+  //       setLastUpdate(new Date());
+  //     }
+  //   } catch (error) {
+  //     } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  // Тихая функция обновления данных без показа загрузки
-  const fetchDashboardDataSilent = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/dashboard/data`, {
-        credentials: 'include',
-        cache: 'no-cache', // Принудительно не кэшировать
-      });
+  // // Тихая функция обновления данных без показа загрузки
+  // const fetchDashboardDataSilent = async () => {
+  //   try {
+  //     const response = await fetch(`${API_BASE}/api/dashboard/data`, {
+  //       credentials: 'include',
+  //       cache: 'no-cache', // Принудительно не кэшировать
+  //     });
 
-      if (response.ok) {
-        const data = await response.json();
-        const newMessageCount = data.botStats?.messagesProcessed || 0;
-        const oldMessageCount = dashboardData?.botStats?.messagesProcessed || 0;
-        
-        // Обновляем данные только если они изменились
-        if (newMessageCount !== oldMessageCount) {
-          setPreviousMessageCount(oldMessageCount);
-          setDashboardData(data);
-          setLastUpdate(new Date());
-          setMessageCountChanged(true);
-          
-          // Сбрасываем флаг изменения через 2 секунды
-          setTimeout(() => setMessageCountChanged(false), 2000);
-        }
-      }
-    } catch (error) {
-      }
-  };
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       const newMessageCount = data.botStats?.messagesProcessed || 0;
+  //       const oldMessageCount = dashboardData?.botStats?.messagesProcessed || 0;
+  //
+  //       // Обновляем данные только если они изменились
+  //       if (newMessageCount !== oldMessageCount) {
+  //         setPreviousMessageCount(oldMessageCount);
+  //         setDashboardData(data);
+  //         setLastUpdate(new Date());
+  //         setMessageCountChanged(true);
+  //
+  //         // Сбрасываем флаг изменения через 2 секунды
+  //         setTimeout(() => setMessageCountChanged(false), 2000);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     } finally {
+  //   }
+  // };
 
   const formatUptime = (uptime) => {
     if (!uptime) return 'Не активен';
@@ -102,7 +108,7 @@ const Assistant = () => {
     const minutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
     const days = Math.floor(hours / 24);
     const remainingHours = hours % 24;
-    
+
     if (days > 0) {
       return `${days}д ${remainingHours}ч ${minutes}м`;
     } else if (hours > 0) {
@@ -197,7 +203,7 @@ const Assistant = () => {
 
           {/* Integrations Block */}
           {(() => {
-            const shouldShow = dashboardData?.integrations && 
+            const shouldShow = dashboardData?.integrations &&
                              (dashboardData.integrations.googleCalendar?.enabled || false);
             return shouldShow;
           })() && (
@@ -221,18 +227,18 @@ const Assistant = () => {
                         <div>
                           <p className="font-medium">Google Calendar</p>
                           <p className="text-sm text-gray-600">
-                            {dashboardData.integrations.googleCalendar.enabled 
-                              ? (dashboardData.integrations.googleCalendar.tokensValid 
-                                  ? "Включен и настроен" 
+                            {dashboardData.integrations.googleCalendar.enabled
+                              ? (dashboardData.integrations.googleCalendar.tokensValid
+                                  ? "Включен и настроен"
                                   : "Включен, требуется проверка")
                               : "Отключен"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge 
+                        <Badge
                           variant={
-                            dashboardData.integrations.googleCalendar.enabled 
+                            dashboardData.integrations.googleCalendar.enabled
                               ? (dashboardData.integrations.googleCalendar.tokensValid ? "default" : "secondary")
                               : "secondary"
                           }
@@ -242,9 +248,9 @@ const Assistant = () => {
                               : ""
                           }
                         >
-                          {dashboardData.integrations.googleCalendar.enabled 
-                            ? (dashboardData.integrations.googleCalendar.tokensValid 
-                                ? "Активна" 
+                          {dashboardData.integrations.googleCalendar.enabled
+                            ? (dashboardData.integrations.googleCalendar.tokensValid
+                                ? "Активна"
                                 : "Требуется проверка")
                             : "Неактивна"}
                         </Badge>

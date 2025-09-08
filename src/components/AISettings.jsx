@@ -38,7 +38,9 @@ const AISettings = () => {
     yandexgpt: false,
     gigachat: false,
     anthropic: false,
-    deepseek: false
+    deepseek: false,
+    veo3: false, // Added for video generation
+    imagen: false // Added for image generation
   });
   const [selectedModels, setSelectedModels] = useState({});
 
@@ -142,6 +144,14 @@ const AISettings = () => {
       icon: '🎭',
       color: 'bg-red-100 text-red-800',
       isDisabled: true
+    },
+    {
+      key: 'veo3',
+      name: 'Google Veo3',
+      description: 'Продвинутая генерация видео от Google',
+      icon: '🚀',
+      color: 'bg-yellow-100 text-yellow-800',
+      isDisabled: false
     }
   ];
 
@@ -230,6 +240,14 @@ const AISettings = () => {
       icon: '🎪',
       color: 'bg-red-100 text-red-800',
       isDisabled: true
+    },
+    {
+      key: 'imagen',
+      name: 'Google Imagen',
+      description: 'Продвинутая генерация изображений от Google',
+      icon: '🌈',
+      color: 'bg-indigo-100 text-indigo-800',
+      isDisabled: false
     }
   ];
 

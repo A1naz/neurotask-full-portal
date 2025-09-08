@@ -79,88 +79,102 @@ const iconComponents = {
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
-  const [profileMenuItems, setProfileMenuItems] = useState([]);
-  const [isLoadingMenu, setIsLoadingMenu] = useState(true);
-  const [menuError, setMenuError] = useState(null);
+  // Remove local menu state
+  // const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
+  // const [profileMenuItems, setProfileMenuItems] = useState([]);
+  // const [isLoadingMenu, setIsLoadingMenu] = useState(true);
+  // const [menuError, setMenuError] = useState(null);
   
   const {
     user,
     logout,
     API_BASE,
-    setAllowedRoutes,
+    // setAllowedRoutes, // This will be handled internally by AuthContext
     isSidebarCollapsed,
     updateSidebarState,
     agentsExpanded,
     generationsExpanded,
     updateInterfaceSettings,
+    allowedRoutes, // Get allowed routes from AuthContext
+    fetchAllowedRoutes, // Get fetch function from AuthContext
+    sidebarMenuItems, // Get menu items from AuthContext
+    profileMenuItems, // Get profile menu items from AuthContext
+    isLoadingMenu, // Get loading state from AuthContext
+    menuError // Get error state from AuthContext
   } = useAuth();
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Загрузка меню с сервера
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      if (!user) return;
+  // Remove local menu fetching useEffect
+  // useEffect(() => {
+  //   const fetchMenuItems = async () => {
+  //     if (!user) return;
       
-      setIsLoadingMenu(true);
-      setMenuError(null);
+  //     setIsLoadingMenu(true);
+  //     setMenuError(null);
       
-      try {
-        const response = await fetch(`${API_BASE}/api/menu`, {
-          credentials: 'include',
-        });
+  //     try {
+  //       const response = await fetch(`${API_BASE}/api/menu`, {
+  //         credentials: 'include',
+  //       });
         
-        if (!response.ok) {
-          throw new Error('Не удалось загрузить конфигурацию меню.');
-        }
+  //       if (!response.ok) {
+  //         throw new Error('Не удалось загрузить конфигурацию меню.');
+  //       }
         
-        const data = await response.json();
+  //       const data = await response.json();
         
-        if (data.success) {
-          // Функция для добавления иконок к пунктам меню
-          const mapIcons = (items) => {
-            return items.map(item => ({
-              ...item,
-              icon: iconComponents[item.iconName],
-              children: item.children ? mapIcons(item.children) : [],
-            }));
-          };
+  //       if (data.success) {
+  //         // Функция для добавления иконок к пунктам меню
+  //         const mapIcons = (items) => {
+  //           return items.map(item => ({
+  //             ...item,
+  //             icon: iconComponents[item.iconName],
+  //             children: item.children ? mapIcons(item.children) : [],
+  //           }));
+  //         };
           
-          setSidebarMenuItems(mapIcons(data.sidebarMenuItems));
-          setProfileMenuItems(mapIcons(data.profileMenuItems));
+  //         setSidebarMenuItems(mapIcons(data.sidebarMenuItems));
+  //         setProfileMenuItems(mapIcons(data.profileMenuItems));
 
-          // Рекурсивно собираем все доступные пути для ProtectedRoute
-          const getAllPaths = (items) => {
-            let paths = [];
-            items.forEach(item => {
-              if (item.path) {
-                paths.push(item.path);
-              }
-              if (item.children) {
-                paths = paths.concat(getAllPaths(item.children));
-              }
-            });
-            return paths;
-          };
-          const sidebarPaths = getAllPaths(data.sidebarMenuItems);
-          const profilePaths = getAllPaths(data.profileMenuItems);
-          // Объединяем и удаляем дубликаты
-          setAllowedRoutes([...new Set([...sidebarPaths, ...profilePaths])]);
+  //         // Рекурсивно собираем все доступные пути для ProtectedRoute
+  //         const getAllPaths = (items) => {
+  //           let paths = [];
+  //           items.forEach(item => {
+  //             if (item.path) {
+  //               paths.push(item.path);
+  //             }
+  //             if (item.children) {
+  //               paths = paths.concat(getAllPaths(item.children));
+  //             }
+  //           });
+  //           return paths;
+  //         };
+  //         const sidebarPaths = getAllPaths(data.sidebarMenuItems);
+  //         const profilePaths = getAllPaths(data.profileMenuItems);
+  //         // Объединяем и удаляем дубликаты
+  //         setAllowedRoutes([...new Set([...sidebarPaths, ...profilePaths])]);
 
-        } else {
-          throw new Error(data.message || 'Ошибка при получении меню.');
-        }
-      } catch (error) {
-        setMenuError(error.message);
-      } finally {
-        setIsLoadingMenu(false);
-      }
-    };
+  //       } else {
+  //         throw new Error(data.message || 'Ошибка при получении меню.');
+  //       }
+  //     } catch (error) {
+  //       setMenuError(error.message);
+  //     } finally {
+  //       setIsLoadingMenu(false);
+  //     }
+  //   };
 
-    fetchMenuItems();
-  }, [user, API_BASE, setAllowedRoutes]);
+  //   fetchMenuItems();
+  // }, [user, API_BASE, setAllowedRoutes]);
+
+  // Add an effect to fetch menu items if they are not yet loaded and user is authenticated
+  useEffect(() => {
+    if (user && !sidebarMenuItems.length && !isLoadingMenu && !menuError) {
+      fetchAllowedRoutes();
+    }
+  }, [user, sidebarMenuItems, isLoadingMenu, menuError, fetchAllowedRoutes]);
 
   const handleLogout = async () => {
     await logout();

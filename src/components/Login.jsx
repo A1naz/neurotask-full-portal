@@ -203,13 +203,13 @@ const Login = () => {
               className="h-16 w-auto"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Neurotask</h1>
-          <p className="text-gray-600 mt-2">Войдите в свой аккаунт</p>
+          <h1 className="text-3xl font-bold text-gray-900">NeuroTask</h1>
+          
         </div>
 
         <Card className="shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Вход</CardTitle>
+            <CardTitle className="text-2xl text-center">Войдите в свой аккаунт</CardTitle>
             <CardDescription className="text-center">
               Введите ваши данные для входа в систему
             </CardDescription>
@@ -237,6 +237,7 @@ const Login = () => {
                     required
                   />
                 </div>
+                <p className="text-sm text-gray-500 mt-1">Сохраните данные, чтобы всегда были под рукой</p>
               </div>
 
               <div className="space-y-2">
@@ -254,6 +255,14 @@ const Login = () => {
                     required
                   />
                 </div>
+                <p className="text-sm text-gray-600">
+                  <Link
+                    to="/password-reset"
+                    className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                  >
+                    Забыли пароль? Восстановите за 30 секунд.
+                  </Link>
+                </p>
               </div>
 
               <Button
@@ -273,8 +282,9 @@ const Login = () => {
             </form>
 
             <div className="mt-6 text-center">
+              
               <p className="text-sm text-gray-600">
-                Нет аккаунта?{' '}
+                Ещё не зарегистрированы?{' '}
                 <Link
                   to="/register"
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors"

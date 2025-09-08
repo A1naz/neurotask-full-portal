@@ -91,11 +91,13 @@ services:
       - OPENAI_SERVICE_URL=http://openai-service:3005
       - GEMINI_SERVICE_URL=http://gemini-service:3006
       - ANTHROPIC_SERVICE_URL=http://anthropic-service:3007
+      - DEEPSEEK_SERVICE_URL=http://deepseek-service:3009
     depends_on:
       - cache-service
       - openai-service
       - gemini-service
       - anthropic-service
+      - deepseek-service
 
   # OpenAI Service
   openai-service:
@@ -143,6 +145,23 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     deploy:
       replicas: 1
+    depends_on:
+      - cache-service
+
+  # DeepSeek Service
+  deepseek-service:
+    build:
+      context: ./deepseek-service
+      dockerfile: Dockerfile
+    ports:
+      - "3009:3009"
+    environment:
+      - DEEPSEEK_SERVICE_PORT=3009
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - CACHE_SERVICE_URL=http://cache-service:3013
+      - CACHE_SERVICE_API_KEY=${CACHE_SERVICE_API_KEY}
+    depends_on:
+      - cache-service
 
   # Frontend
   frontend:

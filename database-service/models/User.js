@@ -30,6 +30,8 @@ const userSchema = new mongoose.Schema({
   },
   verificationCode: String,
   verificationExpires: Date,
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   customSystemPrompt: {
     type: String,
     default: ''
@@ -136,6 +138,7 @@ userSchema.index({ teamId: 1 });
 userSchema.index({ isTeamOwner: 1 });
 userSchema.index({ teamRole: 1 });
 userSchema.index({ teamId: 1, teamRole: 1 });
+userSchema.index({ resetPasswordToken: 1 }); // New index for password reset token
 
 // Виртуальное поле для полного имени
 userSchema.virtual('fullName').get(function() {

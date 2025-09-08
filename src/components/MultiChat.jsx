@@ -52,10 +52,14 @@ import {
   GripVertical,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Video,
+  Image,
+  Music
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
+import { aiModelsConfig } from '@/config/ai-models'; // Import aiModelsConfig
 
 const ProviderCard = React.forwardRef(({ 
   provider, 
@@ -71,12 +75,25 @@ const ProviderCard = React.forwardRef(({
   chatRef,
   dragHandleListeners,
   onSendMessage, // Новое свойство для отправки сообщения
+  onImageUpload, // Новое свойство для обработки загрузки изображения
+  balance, // Принимаем пропс баланса
   ...props 
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
   const [individualMessage, setIndividualMessage] = useState(''); // Состояние для индивидуального сообщения
   const [showInputField, setShowInputField] = useState(false);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null); // Добавляем ref для скрытого input file
+  const imageUploadButtonRef = useRef(null); // Добавляем ref для кнопки загрузки изображения
+
+  const [selectedImageFile, setSelectedImageFile] = useState(null); // Новое состояние для файла изображения
+  const [selectedImageUrl, setSelectedImageUrl] = useState(null);   // Новое состояние для URL изображения
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // Новое состояние для отслеживания загрузки изображения
+  const [isSending, setIsSending] = useState(false); // Новое состояние для отслеживания отправки индивидуального сообщения
+
+  const [isDraggingOver, setIsDraggingOver] = useState(false); // Состояние для отслеживания перетаскивания файла
+  const [droppedFile, setDroppedFile] = useState(null); // Состояние для хранения перетащенного файла
+  const [dragDropError, setDragDropError] = useState(''); // Состояние для ошибок drag & drop
 
   useEffect(() => {
     // Remove the old localStorage item if it exists
@@ -89,6 +106,12 @@ const ProviderCard = React.forwardRef(({
     }
   }, [showInputField]);
 
+  // Очистка выбранного изображения при смене провайдера
+  useEffect(() => {
+    setSelectedImageFile(null);
+    setSelectedImageUrl(null);
+  }, [provider]);
+
   const getProviderIcon = (provider) => {
     const icons = {
       openai: '🤖',
@@ -97,7 +120,24 @@ const ProviderCard = React.forwardRef(({
       yandexgpt: '🔍',
       gigachat: '💼',
       anthropic: '🧠',
-      deepseek: '🔍'
+      deepseek: '🔍',
+      veo3: '🚀',
+      imagen: '🌈',
+      elevenlabs: '🎤',
+      suno: '🎵',
+      udio: '🎼',
+      mubert: '🎧',
+      'openai-tts': '🔊',
+      runway: '🎬',
+      pika: '⚡',
+      sora: '🎥',
+      'stable-video': '🎞️',
+      luma: '🎭',
+      midjourney: '🎨',
+      dalle: '🖼️',
+      'stable-diffusion': '🎭',
+      firefly: '✨',
+      leonardo: '🎪',
     };
     return icons[provider] || '🤖';
   };
@@ -110,7 +150,24 @@ const ProviderCard = React.forwardRef(({
       yandexgpt: 'Yandex GPT',
       gigachat: 'GigaChat',
       anthropic: 'Anthropic',
-      deepseek: 'DeepSeek'
+      deepseek: 'DeepSeek',
+      veo3: 'Google Veo3',
+      imagen: 'Google Imagen',
+      elevenlabs: 'ElevenLabs',
+      suno: 'Suno AI',
+      udio: 'Udio',
+      mubert: 'Mubert',
+      'openai-tts': 'OpenAI TTS',
+      runway: 'Runway Gen-3',
+      pika: 'Pika Labs',
+      sora: 'OpenAI Sora',
+      'stable-video': 'Stable Video Diffusion',
+      luma: 'Luma AI',
+      midjourney: 'Midjourney',
+      dalle: 'DALL-E 3',
+      'stable-diffusion': 'Stable Diffusion XL',
+      firefly: 'Adobe Firefly',
+      leonardo: 'Leonardo AI',
     };
     return names[provider] || provider;
   };
@@ -145,10 +202,81 @@ const ProviderCard = React.forwardRef(({
     navigator.clipboard.writeText(content);
   };
   
-  const handleSend = () => {
-    if (individualMessage.trim()) {
-      onSendMessage(provider, individualMessage.trim());
-      setIndividualMessage(''); // Очищаем поле после отправки
+  const handleImageSelect = async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedImageFile(file);
+      setSelectedImageUrl(URL.createObjectURL(file)); // Для немедленного предпросмотра
+      setIsUploadingImage(true); // Начинаем загрузку
+      try {
+        const uploadedUrl = await onImageUpload(provider, file); // Вызываем родительскую функцию загрузки
+        setSelectedImageUrl(uploadedUrl); // Обновляем URL на тот, что вернул бэкенд
+      } catch (error) {
+        console.error("Ошибка при загрузке изображения:", error);
+        setSelectedImageFile(null);
+        setSelectedImageUrl(null);
+        // Можно добавить отображение ошибки пользователю
+      } finally {
+        setIsUploadingImage(false); // Загрузка завершена
+      }
+    }
+  };
+
+  const handleClearImage = () => {
+    setSelectedImageFile(null);
+    setSelectedImageUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Очищаем input file
+    }
+  };
+
+  const handleSend = async () => {
+    if (individualMessage.trim() || selectedImageFile) {
+      setIsSending(true); // Устанавливаем состояние отправки
+      let imageUrlToUse = selectedImageUrl;
+      let fileToUpload = selectedImageFile;
+
+      try {
+        // Если выбран файл через "+", но URL ещё не получен, загружаем его перед отправкой
+        if (fileToUpload && (!imageUrlToUse || !/^https?:\/\//i.test(imageUrlToUse))) {
+          setIsUploadingImage(true);
+          try {
+            const uploadedUrl = await onImageUpload(provider, fileToUpload);
+            imageUrlToUse = uploadedUrl;
+          } catch (uploadErr) {
+            console.error("Ошибка при загрузке выбранного файла перед отправкой:", uploadErr);
+            setIsUploadingImage(false);
+            setDragDropError('Ошибка при загрузке файла. Попробуйте еще раз.');
+            setTimeout(() => setDragDropError(''), 3000);
+            return;
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }
+
+        if (droppedFile) {
+          fileToUpload = droppedFile;
+          setIsUploadingImage(true); // Устанавливаем состояние загрузки
+          try {
+            const uploadedUrl = await onImageUpload(provider, droppedFile); // Загружаем перетащенный файл
+            imageUrlToUse = uploadedUrl;
+          } catch (error) {
+            console.error("Ошибка при загрузке перетащенного файла:", error);
+            setIsUploadingImage(false); // Сбрасываем состояние загрузки при ошибке
+            setDragDropError('Ошибка при загрузке файла. Попробуйте еще раз.');
+            setTimeout(() => setDragDropError(''), 3000);
+            return; // Прекращаем отправку, если загрузка не удалась
+          } finally {
+            setIsUploadingImage(false); // Сбрасываем состояние загрузки
+          }
+        }
+
+        await onSendMessage(provider, individualMessage.trim(), imageUrlToUse); // Передаем URL изображения
+        setIndividualMessage(''); // Очищаем поле после отправки
+        handleClearImage(); // Очищаем выбранное изображение
+      } finally {
+        setIsSending(false); // Сбрасываем состояние отправки в конце функции, независимо от успеха/ошибки
+      }
     }
   };
 
@@ -159,17 +287,71 @@ const ProviderCard = React.forwardRef(({
     }
   };
   
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Over', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Enter', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Leave', provider);
+    if (!e.currentTarget.contains(e.relatedTarget)) { // Проверяем, не перетаскиваем ли внутри элемента
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop', provider);
+    setIsDraggingOver(false);
+    setDragDropError('');
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        setDroppedFile(file);
+        setSelectedImageFile(file); // Устанавливаем выбранный файл
+        setSelectedImageUrl(URL.createObjectURL(file)); // Для немедленного предпросмотра
+        setIndividualMessage(''); // Очищаем текстовое сообщение
+      } else {
+        setDragDropError('Поддерживаются только изображения и видеофайлы.');
+        setTimeout(() => setDragDropError(''), 3000);
+      }
+    }
+  };
+
+  const handleClearDroppedFile = () => {
+    setDroppedFile(null);
+    setDragDropError('');
+  };
+
   return (
     <Card 
       ref={ref}
       {...props}
       data-provider={provider}
-      className={`${getStatusColor(response?.status || 'idle')} relative flex-shrink-0 transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`}
+      className={cn(
+        `${getStatusColor(response?.status || 'idle')} relative transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`,
+        {
+          'border-2 border-dashed border-blue-500 bg-blue-50': isDraggingOver,
+        }
+      )}
       style={{
-        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : '400px'),
-        height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : '500px'),
-        minWidth: isExpanded ? '100%' : '400px',
-        minHeight: isExpanded ? 'auto' : '400px',
+        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : 'min(100%, 400px)'),
+        height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : 'auto'),
+        minWidth: isExpanded ? '100%' : 'auto',
+        minHeight: isExpanded ? 'auto' : 'auto',
         maxHeight: isExpanded ? 'auto' : '800px',
         order: isExpanded ? -1 : 0,
         position: 'relative',
@@ -180,7 +362,7 @@ const ProviderCard = React.forwardRef(({
       }}
     >
       <CardHeader className="pb-1 pt-2 !px-2 !gap-1">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span {...dragHandleListeners} className="cursor-grab touch-none">
               <GripVertical size={18} className="text-gray-400" />
@@ -188,7 +370,7 @@ const ProviderCard = React.forwardRef(({
             <span className="text-lg">{getProviderIcon(provider)}</span>
             <span className="font-medium">{getProviderName(provider)}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {getStatusIcon(response?.status || 'idle')}
             <Badge variant="outline" className="text-xs">
               {response?.status || 'idle'}
@@ -228,54 +410,133 @@ const ProviderCard = React.forwardRef(({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0 pb-0 !px-2 flex flex-col flex-1 min-h-0">
-        {history && history.length > 0 && (
-          <div 
-            ref={chatRef}
-            className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-0" 
-          >
-            <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
-              <span>История чата ({history.length} сообщений)</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearHistory}
-                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
-              {history.map((msg, index) => (
-                <div key={index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-medium mt-1">
-                      {msg.role === 'user' ? '👤' : '🤖'}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(msg.timestamp).toLocaleTimeString()}
-                      </p>
+      <CardContent className={cn("pt-0 pb-0 !px-2 flex flex-col flex-1 min-h-0", {
+        'border-2 border-dashed border-blue-500 bg-blue-50': isDraggingOver,
+      })}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}>
+        {/* Always render a container for chat history, with a minimum height */}
+        <div 
+          ref={chatRef}
+          className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-[150px] flex flex-col justify-between"
+        >
+          {history && history.length > 0 ? (
+            <>
+              <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+                <span>История чата ({history.length} сообщений)</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClearHistory}
+                  className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
+                {history.map((msg, index) => (
+                  <div key={msg._id || index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-medium mt-1">
+                        {msg.role === 'user' ? '👤' : '🤖'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        {msg.role === 'user' && (() => {
+                          const tagMatch = (msg.content || '').match(/<IMAGE_URL:([^>]+)>/i);
+                          const imageMatch = (msg.content || '').match(/https?:\/\/\S+\.(?:jpeg|jpg|png|gif|webp|svg)(?:\?\S*)?/i);
+                          const userImageUrl = msg.imageUrl || (tagMatch ? tagMatch[1] : (imageMatch ? imageMatch[0] : null));
+                          return userImageUrl ? (
+                            <div className="mb-2">
+                              <img src={userImageUrl} alt="User uploaded image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => window.open(userImageUrl, '_blank')}
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              >
+                                Открыть оригинал
+                              </Button>
+                            </div>
+                          ) : null;
+                        })()}
+                        {(msg.role === 'user') ? (
+                          (() => {
+                            const tagMatch = (msg.content || '').match(/<IMAGE_URL:([^>]+)>/i);
+                            const imageMatch = (msg.content || '').match(/https?:\/\/\S+\.(?:jpeg|jpg|png|gif|webp|svg)(?:\?\S*)?/i);
+                            const urlToStrip = msg.imageUrl || (tagMatch ? tagMatch[1] : (imageMatch ? imageMatch[0] : ''));
+                            const textOnly = (msg.content || '')
+                              .replace(urlToStrip || '', '')
+                              .replace(/<IMAGE_URL:.*?>/gi, '')
+                              .trim();
+                            return textOnly ? (
+                              <p className="text-sm whitespace-pre-wrap break-words">{textOnly}</p>
+                            ) : null;
+                          })()
+                        ) : (
+                          msg.content.match(/\.(mp4|webm|ogg)(\?.*)?$/i) ? (
+                            <div className="mb-2">
+                              <video controls src={msg.content} className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => window.open(msg.content, '_blank')}
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              >
+                                Открыть оригинал
+                              </Button>
+                            </div>
+                          ) : msg.content.match(/\.(jpeg|jpg|png|gif|webp|svg)(\?.*)?$/i) ? (
+                            <div className="mb-2">
+                              <img src={msg.content} alt="Generated image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => window.open(msg.content, '_blank')}
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              >
+                                Открыть оригинал
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                          )
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      {msg.role === 'assistant' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyResponse(msg.content)}
+                          className="h-6 w-6 p-0 ml-2"
+                          title="Копировать ответ"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                    {msg.role === 'assistant' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyResponse(msg.content)}
-                        className="h-6 w-6 p-0 ml-2"
-                        title="Копировать ответ"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-gray-500 py-4 flex-1 flex flex-col items-center justify-center">
+              <MessageSquare className="h-6 w-6 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Начните новый чат или выберите существующий.</p>
             </div>
+          )}
+        </div>
+        {response?.status === 'loading' && (
+          <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Обработка запроса...</span>
           </div>
         )}
-        {response?.status === 'loading' && (
+        {isSending && (
           <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Обработка запроса...</span>
@@ -302,6 +563,12 @@ const ProviderCard = React.forwardRef(({
             )}
           </Alert>
         )}
+        {dragDropError && (
+          <Alert variant="destructive" className="mt-2 p-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">{dragDropError}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
       {!isExpanded && (
         <div 
@@ -317,26 +584,95 @@ const ProviderCard = React.forwardRef(({
       {/* Поле ввода для индивидуального сообщения */}
       {showInputField ? (
         <div className="p-2 border-t">
-          <div className="flex gap-2 items-center">
-            <Textarea
-              ref={inputRef}
-              placeholder={`Запрос для ${getProviderName(provider)}...`}
-              value={individualMessage}
-              onChange={(e) => setIndividualMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onBlur={() => { if (!individualMessage.trim()) setShowInputField(false); }}
-              className="min-h-[40px] resize-none text-sm"
-              rows={1}
-            />
-            <Button
-              size="sm"
-              onClick={handleSend}
-              disabled={!individualMessage.trim() || isLoading}
-              className="px-6"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+          {balance < 1 && (
+            <Alert variant="destructive" className="mb-2 py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">⚠️ Недостаточно токенов для отправки сообщения</AlertDescription>
+            </Alert>
+          )}
+          {(selectedImageUrl || isUploadingImage) && (
+            <div className="flex justify-end mb-2 relative h-[100px]"> {/* Добавлена фиксированная высота для загрузки */}
+              {isUploadingImage ? (
+                <div className="flex items-center justify-center w-[100px] h-[100px] bg-gray-100 rounded-md">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                </div>
+              ) : (
+                <>
+                  <img src={selectedImageUrl} alt="Preview" className="max-w-[100px] max-h-[100px] object-cover rounded-md" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-6 w-6 p-0 bg-white/70 hover:bg-white"
+                    onClick={handleClearImage}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
+          {isSending ? (
+            <div className="flex items-center justify-center gap-2 text-gray-600 h-[40px] border rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Загрузка...</span>
+            </div>
+          ) : (
+            <div className="flex gap-2 items-center relative"> {/* This div wraps input elements when not sending */}
+              {(provider === 'veo3' || provider === 'imagen') && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                    disabled={balance < 1 || isLoading} // Disable if no tokens or global loading
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3"
+                    title="Загрузить изображение или видео"
+                    ref={imageUploadButtonRef} // Привязываем ref к кнопке
+                    disabled={balance < 1 || isLoading} // Disable if no tokens or global loading
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              <Textarea
+                ref={inputRef}
+                placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : `Запрос для ${getProviderName(provider)}...`}
+                value={individualMessage}
+                onChange={(e) => setIndividualMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onBlur={(e) => {
+                  // Проверяем, куда ушел фокус
+                  if (
+                    !individualMessage.trim() &&
+                    !selectedImageFile &&
+                    e.relatedTarget !== fileInputRef.current &&
+                    e.relatedTarget !== imageUploadButtonRef.current
+                  ) {
+                    setShowInputField(false);
+                  }
+                }}
+                className="min-h-[40px] resize-none text-sm flex-1" // Added flex-1
+                rows={1}
+                disabled={isLoading || balance < 1} // Disable if global loading, or no balance
+              />
+              <Button
+                size="sm"
+                onClick={handleSend}
+                disabled={(!individualMessage.trim() && !selectedImageFile) || isLoading || isUploadingImage || balance < 1} // Disable if global loading, upload, no content, or no balance
+                className="px-6"
+              >
+                <Send className="h-4 w-4" /> {/* Always show send icon */}
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <Button
@@ -389,6 +725,13 @@ const MultiChat = () => {
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState(null);
 
+  // State для категорий провайдеров
+  const [chatProviders, setChatProviders] = useState([]);
+  const [videoProviders, setVideoProviders] = useState([]);
+  const [imageProviders, setImageProviders] = useState([]);
+  const [audioProviders, setAudioProviders] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('chat'); // По умолчанию выбраны "Основные"
+
   const [customSystemPrompt, setCustomSystemPrompt] = useState(() => {
     const saved = localStorage.getItem('multichat_custom_system_prompt');
     return saved || '';
@@ -440,6 +783,8 @@ const MultiChat = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
   const [isFirstMessage, setIsFirstMessage] = useState(true); // Состояние для отслеживания первого сообщения в новом чате
 
+  const [providerImageFiles, setProviderImageFiles] = useState({}); // Новое состояние для файлов изображений
+
   const loadUserChatHistories = async () => {
     if (!csrfToken || !user?._id) return;
     try {
@@ -484,7 +829,7 @@ const MultiChat = () => {
       loadCustomPrompt();
       loadUserChatHistories(); // Загружаем историю чатов пользователя
     }
-  }, [csrfToken, user?._id]);
+  }, [csrfToken, user?._id, selectedCategory]);
 
   const scrollToBottom = (provider) => {
     const chatRef = chatRefs.current[provider];
@@ -497,6 +842,7 @@ const MultiChat = () => {
 
   const loadChatHistory = async (provider, chatIdToLoad) => {
     if (!csrfToken || !user?._id || !chatIdToLoad) return;
+    console.log(`[loadChatHistory] Attempting to load history for provider: ${provider}, chatId: ${chatIdToLoad}`);
     try {
       let url = `${API_BASE}/api/multi-chat/history/${provider}?chatId=${chatIdToLoad}`;
       const response = await fetch(url, {
@@ -581,7 +927,35 @@ const MultiChat = () => {
         const data = await response.json();
         const aiSettingsData = await aiSettingsResponse.json();
 
-        const providers = data.activeProviders || [];
+        const allActiveProviders = data.activeProviders || [];
+        
+        // Категоризация активных провайдеров
+        const categorizedChatProviders = [];
+        const categorizedVideoProviders = [];
+        const categorizedImageProviders = [];
+        const categorizedAudioProviders = [];
+
+        allActiveProviders.forEach(providerKey => {
+          const config = aiModelsConfig[providerKey];
+          if (config) {
+            if (config.type === 'chat') {
+              categorizedChatProviders.push(providerKey);
+            } else if (config.type === 'video') {
+              categorizedVideoProviders.push(providerKey);
+            } else if (config.type === 'image') {
+              categorizedImageProviders.push(providerKey);
+            } else if (config.type === 'audio') {
+              categorizedAudioProviders.push(providerKey);
+            }
+          }
+        });
+
+        setChatProviders(categorizedChatProviders);
+        setVideoProviders(categorizedVideoProviders);
+        setImageProviders(categorizedImageProviders);
+        setAudioProviders(categorizedAudioProviders);
+        setActiveProviders(allActiveProviders); // Сохраняем все активные провайдеры для общей логики
+        
         let fetchedCurrentChatId = aiSettingsData.aiSettings.currentChatId;
 
         if (!fetchedCurrentChatId) {
@@ -606,30 +980,34 @@ const MultiChat = () => {
         
         // Use locally stored order if available
         const savedOrder = localStorage.getItem('multichat_selected_providers');
+        let providersToFetchHistory = []; // Новая переменная для хранения списка провайдеров для загрузки истории
+
         if (savedOrder) {
           try {
             const orderedProviders = JSON.parse(savedOrder);
             // Filter out any providers that are no longer active
-            const validOrderedProviders = orderedProviders.filter(p => providers.includes(p));
+            const validOrderedProviders = orderedProviders.filter(p => allActiveProviders.includes(p));
             // Add any new active providers that were not in the saved order
-            const newProviders = providers.filter(p => !validOrderedProviders.includes(p));
+            const newProviders = allActiveProviders.filter(p => !validOrderedProviders.includes(p));
             const finalProviders = [...validOrderedProviders, ...newProviders];
-            setActiveProviders(finalProviders);
             setSelectedProviders(finalProviders);
+            providersToFetchHistory = finalProviders; // Используем актуальный список
           } catch (e) {
-            // If parsing fails, fall back to default
-            setActiveProviders(providers);
-            setSelectedProviders(providers);
+            // Если парсинг не удался, возвращаемся ко всем активным провайдерам
+            setSelectedProviders(allActiveProviders); // Инициализируем всеми активными провайдерами
+            providersToFetchHistory = allActiveProviders; // Используем актуальный список
           }
         } else {
-          setActiveProviders(providers);
-          setSelectedProviders(providers);
+          setSelectedProviders(allActiveProviders); // Инициализируем всеми активными провайдерами, если нет сохраненного порядка
+          providersToFetchHistory = allActiveProviders; // Используем актуальный список
         }
         
         const initialResponses = {};
-        providers.forEach(provider => {
+        // Инициализируем ответы и загружаем историю для всех выбранных провайдеров
+        providersToFetchHistory.forEach(provider => {
           initialResponses[provider] = { status: 'idle', content: '', error: '' };
           if (fetchedCurrentChatId) {
+            console.log(`[loadActiveProviders] Loading history for provider: ${provider}, chatId: ${fetchedCurrentChatId}`);
             loadChatHistory(provider, fetchedCurrentChatId);
           }
         });
@@ -715,20 +1093,12 @@ const MultiChat = () => {
       }
   };
 
-  const sendToProvider = async (provider, messageToSend) => {
+  const sendToProvider = async (provider, messageToSend, imageUrl = null) => {
     try {
       const systemPrompt = useCustomPrompt ? customSystemPrompt : defaultSystemPrompt;
       
       if (!csrfToken || !user?._id) {
-        setResponses(prev => ({
-          ...prev,
-          [provider]: {
-            status: 'error',
-            content: '',
-            error: 'Ошибка безопасности: CSRF токен или пользователь не найден'
-          }
-        }));
-        return;
+        return { status: 'error', content: '', error: 'Ошибка безопасности: CSRF токен или пользователь не найден' };
       }
 
       // Если это первое сообщение в чате, отправляем запрос на создание названия
@@ -749,7 +1119,7 @@ const MultiChat = () => {
             }),
           });
           setIsFirstMessage(false); // Сбрасываем флаг после первого сообщения
-          loadUserChatHistories(); // Обновляем список чатов, чтобы увидеть новое название
+          // Note: loadUserChatHistories will be called once after all providers respond
         } catch (namingError) {
           console.error('Error generating chat name for single provider:', namingError);
           // Не блокируем отправку сообщения, даже если название не сгенерировалось
@@ -758,15 +1128,7 @@ const MultiChat = () => {
 
       // 🔒 ПРОВЕРЯЕМ БАЛАНС ПЕРЕД ОТПРАВКОЙ
       if (balance < 1) {
-        setResponses(prev => ({
-          ...prev,
-          [provider]: {
-            status: 'error',
-            content: '',
-            error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.'
-          }
-        }));
-        return;
+        return { status: 'error', content: '', error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.' };
       }
       
       const response = await fetch(`${API_BASE}/api/multi-chat/${provider}`, {
@@ -780,73 +1142,27 @@ const MultiChat = () => {
         body: JSON.stringify({ 
           message: messageToSend.trim(),
           systemPrompt: systemPrompt,
-          chatId: currentChatId // Передаем currentChatId
+          chatId: currentChatId, // Передаем currentChatId
+          ...(imageUrl && { imageUrl }), // Передаем imageUrl, если он есть
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        
-        // Обновляем ответ для конкретного провайдера
-        setResponses(prev => ({
-          ...prev,
-          [provider]: {
-            status: data.status,
-            content: data.content,
-            error: data.error,
-            context: data.context
-          }
-        }));
-        
-        // Обновляем баланс если есть информация о токенах
-        if (data.tokensDeducted && data.newBalance !== undefined) {
-          updateBalance(data.newBalance);
-        }
-        
-        // Обновляем историю чата если успешно
-        if (data.status === 'success') {
-          loadChatHistory(provider, currentChatId);
-          setTimeout(() => scrollToBottom(provider), 300);
-        }
+        // После успешного ответа обновляем историю чата для конкретного провайдера
+        loadChatHistory(provider, currentChatId);
+        setTimeout(() => scrollToBottom(provider), 200);
+        return { status: data.status, content: data.content, error: data.error, context: data.context, tokensDeducted: data.tokensDeducted, newBalance: data.newBalance };
       } else {
         const errorData = await response.json();
-        
-        // 🔒 Специальная обработка ошибки недостаточного баланса
         if (response.status === 402 && errorData.error === 'INSUFFICIENT_BALANCE') {
-          setResponses(prev => ({
-            ...prev,
-            [provider]: {
-              status: 'error',
-              content: '',
-              error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.',
-              insufficientBalance: true,
-              currentBalance: errorData.currentBalance,
-              requiredTokens: errorData.requiredTokens
-            }
-          }));
-          
-          // Показываем общую ошибку
-          setError('Недостаточно токенов для отправки сообщения. Пополните баланс.');
+          return { status: 'error', content: '', error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.', insufficientBalance: true, currentBalance: errorData.currentBalance, requiredTokens: errorData.requiredTokens };
         } else {
-          setResponses(prev => ({
-            ...prev,
-            [provider]: {
-              status: 'error',
-              content: '',
-              error: errorData.message || 'Ошибка запроса'
-            }
-          }));
+          return { status: 'error', content: '', error: errorData.message || 'Ошибка запроса' };
         }
       }
     } catch (error) {
-      setResponses(prev => ({
-        ...prev,
-        [provider]: {
-          status: 'error',
-          content: '',
-          error: 'Ошибка сети'
-        }
-      }));
+      return { status: 'error', content: '', error: 'Ошибка сети' };
     }
   };
 
@@ -909,63 +1225,89 @@ const MultiChat = () => {
     setResponses(resetResponses);
 
     try {
-      // Отправляем сообщения всем провайдерам по отдельности
-      const promises = selectedProviders.map(provider => sendToProvider(provider, message));
+      // Отправляем сообщения только выбранным провайдерам в текущей категории
+      const providersInCurrentCategory = selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory);
+      const promises = providersInCurrentCategory.map(provider => {
+        const messageContent = message.trim();
+        // Pass imageUrl if it exists for this provider
+        const imageUrl = providerImageFiles[provider]?.url || null;
+        return sendToProvider(provider, messageContent, imageUrl);
+      });
       
       // Используем Promise.allSettled для обработки всех результатов, даже если есть ошибки
       const results = await Promise.allSettled(promises);
       
-      // Обновляем ответы для каждого провайдера на основе результатов Promise.allSettled
-      results.forEach((result, index) => {
-        const provider = selectedProviders[index];
-        if (result.status === 'fulfilled') {
-          // Предполагаем, что sendToProvider уже обновил responses, если был успех
-          // Если sendToProvider возвращает что-то, это можно обработать здесь.
-          // В текущей реализации sendToProvider обновляет состояние напрямую,
-          // поэтому здесь, по сути, не нужно делать ничего, кроме сброса общей ошибки.
-        } else {
-          // Обработка отклоненных промисов (т.е. ошибок, которые не были пойманы sendToProvider)
-          // В данном случае sendToProvider должен был поймать большинство ошибок и обновить состояние responses.
-          // Но если по какой-то причине промис отклонился здесь, мы можем установить общую ошибку сети.
-          setResponses(prev => ({
-            ...prev,
-            [provider]: {
-              status: 'error',
-              content: '',
-              error: 'Ошибка сети'
-            }
-          }));
-        }
-      });
+      const newResponses = {};
+      let anyError = false;
+      let totalTokensDeducted = 0;
+      let hasInsufficientBalance = false;
+      let currentBalance = balance;
 
-      // Общая обработка ошибок, если все провайдеры вернули ошибку сети
-      const anyError = Object.values(responses).some(r => r.status === 'error');
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const provider = providersInCurrentCategory[i];
+
+        if (result.status === 'fulfilled') {
+          const data = result.value;
+          newResponses[provider] = { status: data.status, content: data.content, error: data.error, context: data.context };
+          if (data.tokensDeducted) {
+            totalTokensDeducted += data.tokensDeducted;
+            currentBalance = data.newBalance !== undefined ? data.newBalance : currentBalance; // Update balance from successful response
+          }
+          if (data.status === 'success') {
+            loadChatHistory(provider, currentChatId);
+            setTimeout(() => scrollToBottom(provider), 300);
+          }
+        } else {
+          // Handle rejected promises (network errors, etc.)
+          newResponses[provider] = { status: 'error', content: '', error: 'Ошибка сети' };
+          anyError = true;
+        }
+
+        // Special handling for insufficient balance, which might come as a fulfilled promise with error status
+        if (newResponses[provider].error?.includes('Недостаточно токенов')) {
+          hasInsufficientBalance = true;
+          setError(newResponses[provider].error);
+        }
+      }
+
+      setResponses(prev => ({ ...prev, ...newResponses }));
+
+      if (!hasInsufficientBalance) {
+        // Only update balance if no insufficient balance error occurred globally
+        updateBalance(currentBalance);
+      }
+      
+      // After all promises are settled and state is updated, load chat histories and update balance
+      if (isFirstMessage && currentChatId) {
+        loadUserChatHistories(); // Обновляем список чатов, чтобы увидеть новое название
+      }
+
       if (anyError) {
-        setError('Ошибка при отправке запросов');
+        // Only set general error if it's not an insufficient balance error already handled
+        if (!hasInsufficientBalance) {
+          setError('Ошибка при отправке запросов');
+        }
       } else {
         setError('');
       }
 
-      // Обновляем историю чата для успешных провайдеров
-      // Эта часть должна быть внутри sendToProvider или Promise.allSettled результата
-      // Так как sendToProvider уже вызывает loadChatHistory при успехе, этот блок не нужен.
-      
       // Очищаем поле ввода после отправки
       setMessage('');
       
     } catch (error) {
       setError('Ошибка при отправке запросов');
       
-      // Устанавливаем ошибку для всех провайдеров
+      // Устанавливаем ошибку для всех провайдеров, которые были выбраны
       const errorResponses = {};
-      selectedProviders.forEach(provider => {
+      selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).forEach(provider => {
         errorResponses[provider] = {
           status: 'error',
           content: '',
           error: 'Ошибка сети'
         };
       });
-      setResponses(errorResponses);
+      setResponses(prev => ({ ...prev, ...errorResponses }));
     } finally {
       setLoading(false);
     }
@@ -1167,30 +1509,47 @@ const MultiChat = () => {
     URL.revokeObjectURL(url);
   };
 
-  const getProviderIcon = (provider) => {
-    const icons = {
+  const getProviderIcon = (providerKey) => {
+    // Объединяем иконки из aiModelsConfig и дефолтные иконки
+    const allIcons = {};
+    for (const key in aiModelsConfig) {
+      if (aiModelsConfig[key].icon) {
+        allIcons[key] = aiModelsConfig[key].icon;
+      }
+    }
+    
+    const defaultIcons = {
       openai: '🤖',
       gemini: '🌟',
       xai: '🚀',
       yandexgpt: '🔍',
       gigachat: '💼',
       anthropic: '🧠',
-      deepseek: '🔍'
+      deepseek: '🔍',
+      veo3: '🚀',
+      imagen: '🌈',
+      elevenlabs: '🎤',
+      suno: '🎵',
+      udio: '🎼',
+      mubert: '🎧',
+      'openai-tts': '🔊',
+      runway: '🎬',
+      pika: '⚡',
+      sora: '🎥',
+      'stable-video': '🎞️',
+      luma: '🎭',
+      midjourney: '🎨',
+      dalle: '🖼️',
+      'stable-diffusion': '🎭',
+      firefly: '✨',
+      leonardo: '🎪',
     };
-    return icons[provider] || '🤖';
+
+    return allIcons[providerKey] || defaultIcons[providerKey] || '🤖';
   };
 
-  const getProviderName = (provider) => {
-    const names = {
-      openai: 'OpenAI',
-      gemini: 'Google Gemini',
-      xai: 'xAI',
-      yandexgpt: 'Yandex GPT',
-      gigachat: 'GigaChat',
-      anthropic: 'Anthropic',
-      deepseek: 'DeepSeek'
-    };
-    return names[provider] || provider;
+  const getProviderName = (providerKey) => {
+    return aiModelsConfig[providerKey]?.label || providerKey;
   };
 
   const getStatusIcon = (status) => {
@@ -1273,6 +1632,7 @@ const MultiChat = () => {
 
       // Загружаем историю для каждого активного провайдера с новым chatId
       selectedProviders.forEach(provider => {
+        console.log(`[handleChatSelect] Loading history for provider: ${provider}, chatId: ${chatId}`);
         loadChatHistory(provider, chatId);
       });
 
@@ -1286,8 +1646,112 @@ const MultiChat = () => {
     }
   };
 
+  const handleImageUpload = async (provider, imageFile) => {
+    if (!imageFile) return;
+
+    // Удаляем предыдущую запись, чтобы не мешала новому состоянию загрузки
+    setResponses(prev => ({ ...prev, [provider]: { ...prev[provider], imageUrl: null, error: '' } }));
+
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/upload/vk-cloud`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Обновляем состояние с URL изображения только после успешной загрузки
+        setResponses(prev => ({
+          ...prev,
+          [provider]: { ...prev[provider], status: 'idle', imageUrl: data.imageUrl, error: '' }
+        }));
+        // Сохраняем файл изображения для этого провайдера, если нужно
+        setProviderImageFiles(prev => ({ ...prev, [provider]: { url: data.imageUrl } }));
+        return data.imageUrl; // Возвращаем URL
+      } else {
+        const errorData = await response.json();
+        const errorMessage = `Ошибка загрузки изображения: ${errorData.message || 'Неизвестная ошибка'}`;
+        setResponses(prev => ({
+          ...prev,
+          [provider]: { ...prev[provider], status: 'error', error: errorMessage }
+        }));
+        throw new Error(errorMessage); // Выбрасываем ошибку
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки изображения:', error);
+      const errorMessage = 'Ошибка сети при загрузке изображения';
+      setResponses(prev => ({
+        ...prev,
+        [provider]: { ...prev[provider], status: 'error', error: errorMessage }
+      }));
+      throw new Error(errorMessage); // Выбрасываем ошибку
+    }
+  };
+
+  // Обработчики событий Drag & Drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Over', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Enter', provider);
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag Leave', provider);
+    if (!e.currentTarget.contains(e.relatedTarget)) { // Проверяем, не перетаскиваем ли внутри элемента
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop', provider);
+    setIsDraggingOver(false);
+    setDragDropError('');
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        setDroppedFile(file);
+        setSelectedImageFile(file); // Устанавливаем выбранный файл
+        setSelectedImageUrl(URL.createObjectURL(file)); // Для немедленного предпросмотра
+        setIndividualMessage(''); // Очищаем текстовое сообщение
+      } else {
+        setDragDropError('Поддерживаются только изображения и видеофайлы.');
+        setTimeout(() => setDragDropError(''), 3000);
+      }
+    }
+  };
+
+  const handleClearDroppedFile = () => {
+    setDroppedFile(null);
+    setDragDropError('');
+  };
+
+  const handleProviderImageUpload = (provider, file) => {
+    return handleImageUpload(provider, file);
+  };
+
   return (
-    <div className="flex flex-col h-full p-6 relative">
+    <div className="flex flex-col h-full p-2 sm:p-6 relative">
       {/* Боковая панель для истории чатов */}
       <div
         className={cn(
@@ -1325,23 +1789,26 @@ const MultiChat = () => {
       </div>
 
       {/* Основная область с прокруткой */}
-       <div className="flex-1 overflow-y-auto pb-4">
-        {/* Фиксированная область сверху */}
-        <div className="flex-shrink-0">
+       <div 
+        className="flex-1 overflow-y-auto pb-4"
+       >
+        {/* Область сверху */}
+        <div className="flex-shrink">
                  {/* Заголовок с кнопками управления */}
                   <Card className="mb-4">
                     <CardHeader className="pb-2">
-             <div className="flex items-center justify-between">
+             <div className="flex flex-wrap items-center justify-between gap-2">
                <CardTitle className="flex items-center gap-2">
                  <Sparkles className="w-5 h-5" />
                  Мульти-чат AI
                </CardTitle>
-               <div className="flex items-center gap-2">
+               <div className="flex flex-wrap items-center gap-2">
                  <Button
                    variant="outline"
                    size="sm"
                    onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
                    title={isHeaderCollapsed ? "Развернуть панель" : "Свернуть панель"}
+                   className="w-full sm:w-auto"
                  >
                    {isHeaderCollapsed ? (
                      <ChevronDown className="h-4 w-4" />
@@ -1360,6 +1827,7 @@ const MultiChat = () => {
                      }
                      setShowSettings(!showSettings);
                    }}
+                   className="w-full sm:w-auto"
                  >
                    <Settings className="h-4 w-4 mr-2" />
                    Настройки
@@ -1369,6 +1837,7 @@ const MultiChat = () => {
                      variant="outline"
                      size="sm"
                      onClick={exportResults}
+                     className="w-full sm:w-auto"
                    >
                      <Download className="h-4 w-4 mr-2" />
                      Экспорт
@@ -1383,7 +1852,7 @@ const MultiChat = () => {
                      }
                    }}
                    disabled={isClearingChats}
-                   className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                   className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 w-full sm:w-auto"
                    title="Очистить все чаты и начать новый"
                  >
                    {isClearingChats ? (
@@ -1407,7 +1876,7 @@ const MultiChat = () => {
            </CardHeader>
                       {!isHeaderCollapsed && (
               <CardContent className="pt-0">
-                <p className="text-gray-600 mb-2">
+                <p className="text-gray-600 mb-4">
                Отправьте запрос одновременно во все подключенные AI сервисы и получите ответы в реальном времени.
              </p>
              
@@ -1420,67 +1889,167 @@ const MultiChat = () => {
                {stats.loading > 0 && <Badge variant="outline" className="bg-blue-100 text-blue-800">{stats.loading} загрузка</Badge>}
              </div>
            )}
-
-             {/* Выбор провайдеров */}
-             <div className="space-y-2">
-               <Label className="text-sm font-medium">Выберите провайдеры:</Label>
-               {activeProviders.length > 0 ? (
-                 <div className="space-y-3">
-                   <div className="flex flex-wrap gap-2">
-                     {activeProviders.map(provider => (
-                       <Button
-                         key={provider}
-                         variant={selectedProviders.includes(provider) ? "default" : "outline"}
-                         size="sm"
-                         onClick={() => toggleProvider(provider)}
-                         className="flex items-center gap-2"
-                       >
-                         <span>{getProviderIcon(provider)}</span>
-                         {getProviderName(provider)}
-                       </Button>
-                     ))}
+             
+             {selectedProviders.length > 0 && ( // Показываем только если есть выбранные провайдеры
+               <div className="space-y-2 mt-4">
+                 <div className="flex items-center gap-2 text-sm text-gray-600">
+                   <Zap className="h-4 w-4" />
+                   <span>
+                     Будет списано: <strong>{selectedProviders.length} токенов</strong> 
+                     (по 1 за каждый провайдер)
+                   </span>
+                 </div>
+                 
+                 <div className="flex items-center gap-2 text-sm text-gray-600">
+                   <MessageSquare className="h-4 w-4" />
+                   <span>
+                     Максимум сообщений в чате: <strong>{getMaxMessageCount()}/50</strong>
+                   </span>
+                 </div>
+                 
+                 {checkMessageLimit() && (
+                   <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                     <AlertTriangle className="h-4 w-4" />
+                     <span>
+                       Достигнут лимит в 50 сообщений. Очистите контекст для продолжения.
+                     </span>
                    </div>
-                   
-                   {selectedProviders.length > 0 && (
-                     <div className="space-y-2">
-                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                         <Zap className="h-4 w-4" />
-                         <span>
-                           Будет списано: <strong>{selectedProviders.length} токенов</strong> 
-                           (по 1 за каждый провайдер)
-                         </span>
-                       </div>
-                       
-                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                         <MessageSquare className="h-4 w-4" />
-                         <span>
-                           Максимум сообщений в чате: <strong>{getMaxMessageCount()}/50</strong>
-                         </span>
-                       </div>
-                       
-                       {checkMessageLimit() && (
-                         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                           <AlertTriangle className="h-4 w-4" />
-                           <span>
-                             Достигнут лимит в 50 сообщений. Очистите контекст для продолжения.
-                           </span>
-                         </div>
-                       )}
-                     </div>
-                   )}
-                 </div>
-               ) : (
-                 <div className="text-center py-4">
-                   <p className="text-gray-500 mb-2">Нет активных AI провайдеров</p>
-                   <p className="text-sm text-gray-400">
-                     Перейдите в раздел "Настройки AI" и включите нужные провайдеры
-                   </p>
-                 </div>
-               )}
-             </div>
+                 )}
+               </div>
+             )}
+           
+             {activeProviders.length === 0 && (
+               <div className="text-center py-4">
+                 <p className="text-gray-500 mb-2">Нет активных AI провайдеров</p>
+                 <p className="text-sm text-gray-400">
+                   Перейдите в раздел "Настройки AI" и включите нужные провайдеры
+                 </p>
+               </div>
+             )}
+           
                     </CardContent>
             )}
        </Card>
+
+       <Tabs defaultValue="chat" className="w-full mb-6" value={selectedCategory} onValueChange={setSelectedCategory}>
+         <TabsList className="flex flex-col w-full gap-2 p-1 bg-gray-100 rounded-md sm:flex-row">
+           <TabsTrigger value="chat" className="flex items-center gap-2 w-full sm:w-auto">
+             <MessageSquare className="w-4 h-4" />
+             Основные
+           </TabsTrigger>
+           <TabsTrigger value="video" className="flex items-center gap-2 w-full sm:w-auto">
+             <Video className="w-4 h-4" />
+             Видео
+           </TabsTrigger>
+           <TabsTrigger value="audio" className="flex items-center gap-2 w-full sm:w-auto">
+             <Music className="w-4 h-4" />
+             Аудио
+           </TabsTrigger>
+           <TabsTrigger value="image" className="flex items-center gap-2 w-full sm:w-auto">
+             <Image className="w-4 h-4" />
+             Изображения
+           </TabsTrigger>
+           <TabsTrigger value="mix" className="flex items-center gap-2 w-full sm:w-auto">
+             <Sparkles className="w-4 h-4" />
+             Микс
+           </TabsTrigger>
+         </TabsList>
+
+         {/* Контент вкладок */}
+         <TabsContent value="chat" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите основные провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {chatProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="video" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите видео провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {videoProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="audio" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите аудио провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {audioProviders.length > 0 ? (
+               audioProviders.map(provider => (
+                 <Button
+                   key={provider}
+                   variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                   size="sm"
+                   onClick={() => toggleProvider(provider)}
+                   className="flex items-center gap-2"
+                 >
+                   <span>{getProviderIcon(provider)}</span>
+                   {getProviderName(provider)}
+                 </Button>
+               ))
+             ) : (
+               <p className="text-gray-500 text-sm">Аудио провайдеры пока недоступны.</p>
+             )}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="image" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите провайдеры изображений:</Label>
+           <div className="flex flex-wrap gap-2">
+             {imageProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="mix" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Все активные провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {activeProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+       </Tabs>
 
                              {/* Настройки */}
          {showSettings && !isHeaderCollapsed && (
@@ -1584,10 +2153,10 @@ const MultiChat = () => {
                     onDragEnd={handleDragEnd}
                   >
                     <SortableContext 
-                      items={selectedProviders}
+                      items={selectedCategory === 'mix' ? selectedProviders : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory)}
                       strategy={verticalListSortingStrategy}
                     >
-                      {selectedProviders.map(provider => (
+                      {selectedCategory === 'mix' ? selectedProviders.map(provider => (
                         <SortableProviderCard 
                           key={provider} 
                           provider={provider}
@@ -1601,6 +2170,26 @@ const MultiChat = () => {
                           onResizeStart={(e, p) => handleResizeStart(e, p)}
                           chatRef={el => chatRefs.current[provider] = el}
                           onSendMessage={sendToProvider} // Передаем функцию
+                          onImageUpload={handleProviderImageUpload} // Передаем функцию
+                          balance={balance} // Передаем баланс
+                    
+                        />
+                      )) : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
+                        <SortableProviderCard 
+                          key={provider} 
+                          provider={provider}
+                          response={responses[provider]}
+                          history={chatHistories[provider]}
+                          onClearHistory={() => clearChatHistory(provider)}
+                          isLoading={loading} // Передаем глобальный loading
+                          isExpanded={expandedProviders[provider]}
+                          onToggleExpand={() => toggleProviderExpand(provider)}
+                          size={providerSizes[provider]}
+                          onResizeStart={(e, p) => handleResizeStart(e, p)}
+                          chatRef={el => chatRefs.current[provider] = el}
+                          onSendMessage={sendToProvider} // Передаем функцию
+                          onImageUpload={handleProviderImageUpload} // Передаем функцию
+                          balance={balance} // Передаем баланс
                         />
                       ))}
                     </SortableContext>
@@ -1612,6 +2201,8 @@ const MultiChat = () => {
                           history={chatHistories[activeId]}
                           isExpanded={expandedProviders[activeId]}
                           size={providerSizes[activeId]}
+                          onImageUpload={handleProviderImageUpload}
+                          balance={balance} // Передаем баланс
                         />
                       ) : null}
                     </DragOverlay>
@@ -1647,39 +2238,49 @@ const MultiChat = () => {
             </Alert>
           )}
           
-                     <div className="flex gap-2">
-                            <div className="flex-1">
-               <Textarea
-                 placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
-                 value={message}
-                 onChange={(e) => setMessage(e.target.value)}
-                 onKeyPress={handleKeyPress}
-                 className={`min-h-[50px] resize-none ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
-                 disabled={loading || selectedProviders.length === 0 || balance < 1}
-               />
-             </div>
-             <Button
-               onClick={sendToAllProviders}
-               disabled={loading || !message.trim() || selectedProviders.length === 0 || balance < 1}
-               className="px-6"
-               title={`loading: ${loading}, message: ${!!message.trim()}, providers: ${selectedProviders.length}, balance: ${balance}`}
-             >
-               {loading ? (
-                 <Loader2 className="h-4 w-4 animate-spin" />
-               ) : (
-                 <Send className="h-4 w-4" />
-               )}
-             </Button>
-           </div>
-          
-                                                                                                                                   <div className="mt-0.5 text-xs text-gray-500">
-                Нажмите Enter для отправки, Shift+Enter для новой строки
-                {balance < 1 && (
-                  <span className="ml-2 text-red-500 font-medium">
-                    ⚠️ Недостаточно токенов для отправки сообщения
-                  </span>
+          {selectedCategory !== 'mix' && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 relative">
+                <Textarea
+                  placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className={`min-h-[50px] resize-none w-full ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
+                  disabled={loading || selectedProviders.length === 0 || balance < 1}
+                />
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 dark:bg-black dark:bg-opacity-80 rounded-md z-10">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Обработка запроса...</span>
+                  </div>
                 )}
               </div>
+              <Button
+                onClick={sendToAllProviders}
+                disabled={loading || !message.trim() || selectedProviders.length === 0 || balance < 1}
+                className="px-6 w-full sm:w-auto"
+                title={`loading: ${loading}, message: ${!!message.trim()}, providers: ${selectedProviders.length}, balance: ${balance}`}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
+          
+          {selectedCategory !== 'mix' && (
+            <div className="mt-0.5 text-xs text-gray-500">
+              Нажмите Enter для отправки, Shift+Enter для новой строки
+              {balance < 1 && (
+                <span className="ml-2 text-red-500 font-medium">
+                  ⚠️ Недостаточно токенов для отправки сообщения
+                </span>
+              )}
+            </div>
+          )}
                                          </div>
            </Card>
      </div>

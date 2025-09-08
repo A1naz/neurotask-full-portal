@@ -13,9 +13,8 @@ const mongoose = require("mongoose");
 router.post("/:provider", requireApiKey, async (req, res) => {
   try {
     const { provider } = req.params;
-    const { message, systemPrompt, chatId } = req.body;
+    const { message, systemPrompt, chatId, imageUrl } = req.body; // Добавляем imageUrl
 
- 
     if (!message) {
       return res.status(400).json({
         error: "Bad Request",
@@ -39,8 +38,6 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       });
     }
 
-   
-
     const defaultChatTitle = `Чат ${new Date().toLocaleDateString("ru-RU")}`; // Placeholder title, will only be used if chat is new
 
     // Добавляем сообщение в историю чата
@@ -50,20 +47,19 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       chatId,
       defaultChatTitle
     );
-    // Добавляем сообщение пользователя
-    await chatHistory.addMessage("user", message);
-
+    // Добавляем сообщение пользователя: сохраняем текст и ссылку на изображение в content через тег
+    const contentToSave = imageUrl ? `${message} <IMAGE_URL:${imageUrl}>` : message;
+    console.log("🔍 contentToSave", contentToSave);
+    console.log("🔍 imageUrl", imageUrl);
+    await chatHistory.addMessage("user", contentToSave, imageUrl); // Передаем imageUrl
 
     // 🔍 ЗАГРУЖАЕМ КОНТЕКСТ ИЗ ИСТОРИИ ЧАТА
     const contextLimit = 10; // Лимит контекста для мультичата
     const chatContext = chatHistory.getContext(contextLimit);
 
-
     // Интеграция с реальными AI провайдерами
     let aiResponse = "";
     let success = true;
-
-
 
     try {
       // Определяем URL сервиса провайдера
@@ -77,24 +73,17 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         deepseek: process.env.DEEPSEEK_SERVICE_URL,
       };
 
-      const providerUrl = providerUrls[provider];
-      
+      const providerUrl = providerUrls["openai"];
+
       if (!providerUrl) {
         aiResponse = `Провайдер ${provider} не настроен. Отсутствует переменная окружения ${provider.toUpperCase()}_SERVICE_URL`;
         success = false;
       } else {
-   
         const aiSettings = await AISettings.findByUserId(userId);
-        console.log("🔍 aiSettings", aiSettings.selectedModels);
-        let selectedModel = aiSettings?.selectedModels ? aiSettings.selectedModels[provider] : provider;
-   
-        console.log("🔍 Multi-chat context loaded:", {
-          contextLimit: contextLimit,
-          contextMessages: chatContext.length,
-          provider: provider,
-          providerUrl: providerUrl,
-          selectedModel: selectedModel,
-        });
+
+        let selectedModel = aiSettings?.selectedModels
+          ? aiSettings.selectedModels[provider]
+          : provider;
 
         // Отправляем запрос к AI провайдеру
         const aiResponseData = await axios.post(
@@ -110,9 +99,12 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
+            ...(imageUrl &&
+              (provider === "veo3" || provider === "imagen") && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
+            numberOfImages: 1,
           },
           {
-            timeout: 30000,
+            timeout: 200000,
             headers: {
               "Content-Type": "application/json",
             },
@@ -120,10 +112,22 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         );
 
         if (aiResponseData.data?.success) {
-          aiResponse =
-            aiResponseData.data.content ||
+          let contentToSend;
+          if (
+            aiResponseData.data.provider === "imagen" &&
+            Array.isArray(aiResponseData.data.images) &&
+            aiResponseData.data.images.length > 0
+          ) {
+            contentToSend = aiResponseData.data.images.join("\n");
+          } else if (aiResponseData.data.provider === "veo3" && aiResponseData.data.videoUrl) {
+            contentToSend = aiResponseData.data.videoUrl;
+          } else {
+            contentToSend = aiResponseData.data.content ||
             aiResponseData.data.response ||
-            "Ответ получен от AI провайдера";
+            aiResponseData.data?.message ||
+            "Неизвестная ошибка";
+          }
+          aiResponse = contentToSend;
         } else {
           aiResponse = `Ошибка от провайдера ${provider}: ${
             aiResponseData.data?.message || "Неизвестная ошибка"
@@ -132,6 +136,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         }
       }
     } catch (aiError) {
+      console.log("🔍 aiError", aiError);
       aiResponse = `Ошибка связи с провайдером ${provider}: ${aiError.message}`;
       success = false;
     }
@@ -152,6 +157,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       },
     });
   } catch (error) {
+    console.log("🔍 error", error);
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка отправки сообщения провайдеру",
@@ -282,7 +288,8 @@ router.get("/history", requireApiKey, async (req, res) => {
       .limit(limit)
       .lean();
 
-    const formattedHistory = history.map((chat) => ({  // Изменил "messages" на "chatHistory" и добавил chatTitle и chatId
+    const formattedHistory = history.map((chat) => ({
+      // Изменил "messages" на "chatHistory" и добавил chatTitle и chatId
       chatId: chat.chatId,
       chatTitle: chat.chatTitle,
       provider: chat.provider,
@@ -335,9 +342,9 @@ router.get("/history/:provider", requireApiKey, async (req, res) => {
     res.json({
       success: true,
       messages: chatHistory ? chatHistory.messages : [],
-      chatId: chatHistory ? chatHistory.chatId : null,        // Добавлено
-      chatTitle: chatHistory ? chatHistory.chatTitle : null,  // Добавлено
-      provider: chatHistory ? chatHistory.provider : null,    // Добавлено
+      chatId: chatHistory ? chatHistory.chatId : null, // Добавлено
+      chatTitle: chatHistory ? chatHistory.chatTitle : null, // Добавлено
+      provider: chatHistory ? chatHistory.provider : null, // Добавлено
       lastActivity: chatHistory ? chatHistory.lastActivity : null, // Добавлено
     });
   } catch (error) {

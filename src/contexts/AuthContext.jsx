@@ -1,6 +1,67 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  MessageSquare,
+  Cog,
+  Wallet,
+  Plus,
+  Bot,
+  Sparkles,
+  FileText,
+  Users,
+  TrendingUp,
+  Share2,
+  Target,
+  Megaphone,
+  ShoppingCart,
+  Headphones,
+  ChevronDown,
+  ChevronRight,
+  Wand2,
+  Video,
+  Image,
+  Music,
+  CheckSquare,
+  Home, // Добавим недостающие
+  ListChecks,
+  Calendar,
+  Landmark,
+  History,
+  Cpu,
+  Settings
+} from 'lucide-react';
 
 const AuthContext = createContext();
+
+const iconComponents = {
+  MessageSquare,
+  Cog,
+  Wallet,
+  Plus,
+  Bot,
+  Sparkles,
+  FileText,
+  Users,
+  TrendingUp,
+  Share2,
+  Target,
+  Megaphone,
+  ShoppingCart,
+  Headphones,
+  Home,
+  ListChecks,
+  Calendar,
+  Landmark,
+  History,
+  Cpu,
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  Wand2,
+  Video,
+  Image,
+  Music,
+  CheckSquare,
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -20,6 +81,11 @@ export const AuthProvider = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [agentsExpanded, setAgentsExpanded] = useState(true);
   const [generationsExpanded, setGenerationsExpanded] = useState(true);
+  // New state for menu items and loading
+  const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
+  const [profileMenuItems, setProfileMenuItems] = useState([]);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false); // Change to false
+  const [menuError, setMenuError] = useState(null);
 
 // API base URL
 const API_BASE = (() => {
@@ -62,15 +128,32 @@ const API_BASE = (() => {
     return null;
   };
 
+  // Function to map icons to menu items - moved outside fetchAllowedRoutes for optimization
+  const mapIcons = (items) => {
+    return items.map(item => ({
+      ...item,
+      icon: iconComponents[item.iconName],
+      children: item.children ? mapIcons(item.children) : [],
+    }));
+  };
+
   const fetchAllowedRoutes = async () => {
+    // Ensure this function is only called if a user is present
+    if (!user) return [];
+
+    setIsLoadingMenu(true);
+    setMenuError(null);
+
     try {
       const response = await fetch(`${API_BASE}/api/menu`, {
         credentials: 'include',
       });
       if (response.ok) {
         const menuConfig = await response.json();
-        // Исправлено: теперь мы берем данные из sidebarMenuItems
-        const sidebarMenu = menuConfig.sidebarMenuItems || [];
+
+        // Use the globally defined mapIcons
+        setSidebarMenuItems(mapIcons(menuConfig.sidebarMenuItems || []));
+        setProfileMenuItems(mapIcons(menuConfig.profileMenuItems || []));
         
         // Устанавливаем состояние сайдбара
         setIsSidebarCollapsed(menuConfig.isSidebarCollapsed || false);
@@ -91,14 +174,22 @@ const API_BASE = (() => {
           return paths;
         };
         
-        const routes = getAllPaths(sidebarMenu);
-        setAllowedRoutes(routes);
-        return routes;
+        const sidebarPaths = getAllPaths(menuConfig.sidebarMenuItems || []);
+        const profilePaths = getAllPaths(menuConfig.profileMenuItems || []);
+        // Объединяем и удаляем дубликаты
+        const allAllowedPaths = [...new Set([...sidebarPaths, ...profilePaths])];
+        setAllowedRoutes(allAllowedPaths);
+        return allAllowedPaths;
+      } else {
+        throw new Error('Не удалось загрузить конфигурацию меню.');
       }
     } catch (error) {
       console.error('Failed to fetch allowed routes:', error);
+      setMenuError(error.message || 'Ошибка при получении меню.');
       setAllowedRoutes([]);
       return [];
+    } finally {
+      setIsLoadingMenu(false);
     }
   };
 
@@ -233,7 +324,7 @@ const API_BASE = (() => {
     }
   };
 
-  const register = async (username, email, password) => {
+  const register = async (email, password) => {
     try {
       debugCookies(); // Debug cookies before registration
       
@@ -243,7 +334,7 @@ const API_BASE = (() => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
@@ -400,13 +491,24 @@ const API_BASE = (() => {
     debugCookies, // Expose debug function
     allowedRoutes,
     setAllowedRoutes,
-    fetchAllowedRoutes, // Экспортируем функцию
     isSidebarCollapsed,
     updateSidebarState,
     agentsExpanded,
     generationsExpanded,
-    updateInterfaceSettings
+    updateInterfaceSettings,
+    // Export new menu states
+    sidebarMenuItems,
+    profileMenuItems,
+    isLoadingMenu,
+    menuError,
   };
+
+  // Fetch menu items when user changes or on initial load if not already loaded
+  useEffect(() => {
+    if (user && !sidebarMenuItems.length && !isLoadingMenu && !menuError) {
+      fetchAllowedRoutes();
+    }
+  }, [user, sidebarMenuItems, isLoadingMenu, menuError, fetchAllowedRoutes]); // Add fetchAllowedRoutes to dependencies
 
   return (
     <AuthContext.Provider value={value}>

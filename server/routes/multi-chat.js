@@ -190,10 +190,9 @@ router.post(
   requirePermission("multi-chat"),
   async (req, res) => {
     try {
-      
       const userId = req.session.userId;
       const { provider } = req.params;
-      const { message, systemPrompt, chatId } = req.body;
+      const { message, systemPrompt, chatId, imageUrl } = req.body;
 
       if (!message) {
         return res.status(400).json({
@@ -245,6 +244,7 @@ router.post(
           message,
           systemPrompt,
           chatId, // Передаем chatId в database-service
+          imageUrl,
         },
         {
           headers: {

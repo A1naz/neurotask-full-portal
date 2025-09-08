@@ -7,12 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { 
-  ArrowLeft, 
-  Settings, 
-  User, 
-  Lock, 
-  Globe, 
+import {
+  ArrowLeft,
+  Settings,
+  User,
+  Lock,
+  Globe,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -20,6 +20,7 @@ import {
   Key
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDashboard } from '@/contexts/DashboardContext'; // Import useDashboard
 import ApiKeys from './ApiKeys';
 
 const UserSettings = () => {
@@ -37,13 +38,14 @@ const UserSettings = () => {
     defaultEventDuration: 60,
     language: 'ru',
   });
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true); // Removed local loading state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
 
   const { user, updateProfile, changePassword, API_BASE } = useAuth();
+  const { dashboardData, loading } = useDashboard(); // Get dashboardData and loading from context
   const navigate = useNavigate();
 
   const timezones = [
@@ -73,30 +75,39 @@ const UserSettings = () => {
         email: user.email || '',
       });
     }
-    fetchSettings();
-  }, [user]);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/dashboard/data`, {
-        credentials: 'include',
+    // fetchSettings(); // Removed local fetchSettings call
+    // Populate settings from dashboardData if available
+    if (dashboardData?.settings) {
+      setSettings({
+        timezone: dashboardData.settings.timezone || 'Europe/Moscow',
+        defaultEventDuration: dashboardData.settings.defaultEventDuration || 60,
+        language: dashboardData.settings.language || 'ru',
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.settings) {
-          setSettings({
-            timezone: data.settings.timezone || 'Europe/Moscow',
-            defaultEventDuration: data.settings.defaultEventDuration || 60,
-            language: data.settings.language || 'ru',
-          });
-        }
-      }
-    } catch (error) {
-      } finally {
-      setLoading(false);
     }
-  };
+  }, [user, dashboardData]); // Add dashboardData to dependencies
+
+  // Remove fetchSettings function - handled by DashboardContext
+  // const fetchSettings = async () => {
+  //   try {
+  //     const response = await fetch(`${API_BASE}/api/dashboard/data`, {
+  //       credentials: 'include',
+  //     });
+
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       if (data.settings) {
+  //         setSettings({
+  //           timezone: data.settings.timezone || 'Europe/Moscow',
+  //           defaultEventDuration: data.settings.defaultEventDuration || 60,
+  //           language: data.settings.language || 'ru',
+  //         });
+  //       }
+  //     }
+  //   } catch (error) {
+  //     } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleProfileChange = (e) => {
     setProfileData({

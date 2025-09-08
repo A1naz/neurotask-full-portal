@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTokenBalance } from '@/contexts/TokenBalanceContext'; // Import useTokenBalance
 import { Plus, Minus, History, Wallet, Calendar, Filter, TrendingUp, BarChart3 } from 'lucide-react';
 import { 
   LineChart, 
@@ -25,10 +26,11 @@ import {
 
 const TokenHistory = () => {
   const { API_BASE, csrfToken } = useAuth();
+  const { balance, fetchBalance } = useTokenBalance(); // Get balance and fetchBalance from context
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
-  const [currentBalance, setCurrentBalance] = useState(0);
+  // const [currentBalance, setCurrentBalance] = useState(0); // Removed local state
   const [showTopUpForm, setShowTopUpForm] = useState(false);
   const [chartData, setChartData] = useState([]);
   const [stats, setStats] = useState({
@@ -48,7 +50,6 @@ const TokenHistory = () => {
 
   useEffect(() => {
     loadHistory();
-    loadCurrentBalance();
   }, [filters]); // Перезагружаем при изменении фильтров
 
   const loadHistory = async () => {
@@ -163,20 +164,6 @@ const TokenHistory = () => {
     setStats(stats);
   };
 
-  const loadCurrentBalance = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/tokens/balance`, {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentBalance(data.balance || 0);
-      }
-    } catch (error) {
-      }
-  };
-
   const handleTopUp = async () => {
     if (!topUpAmount || topUpAmount <= 0) {
       alert('Введите корректную сумму');
@@ -202,7 +189,8 @@ const TokenHistory = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setCurrentBalance(data.newBalance);
+        // setCurrentBalance(data.newBalance); // Removed local state update
+        fetchBalance(); // Refresh balance from context
         setTopUpAmount('');
         setShowTopUpForm(false);
         loadHistory(); // Перезагружаем историю
@@ -333,7 +321,7 @@ const TokenHistory = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-bold">{currentBalance} токенов</div>
+            <div className="text-2xl font-bold">{balance} токенов</div>
             <Button 
               onClick={() => setShowTopUpForm(!showTopUpForm)}
               className="flex items-center gap-2"

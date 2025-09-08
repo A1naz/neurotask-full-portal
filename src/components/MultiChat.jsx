@@ -76,6 +76,7 @@ const ProviderCard = React.forwardRef(({
   dragHandleListeners,
   onSendMessage, // Новое свойство для отправки сообщения
   onImageUpload, // Новое свойство для обработки загрузки изображения
+  balance, // Принимаем пропс баланса
   ...props 
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
@@ -88,6 +89,7 @@ const ProviderCard = React.forwardRef(({
   const [selectedImageFile, setSelectedImageFile] = useState(null); // Новое состояние для файла изображения
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);   // Новое состояние для URL изображения
   const [isUploadingImage, setIsUploadingImage] = useState(false); // Новое состояние для отслеживания загрузки изображения
+  const [isSending, setIsSending] = useState(false); // Новое состояние для отслеживания отправки индивидуального сообщения
 
   const [isDraggingOver, setIsDraggingOver] = useState(false); // Состояние для отслеживания перетаскивания файла
   const [droppedFile, setDroppedFile] = useState(null); // Состояние для хранения перетащенного файла
@@ -232,30 +234,35 @@ const ProviderCard = React.forwardRef(({
 
   const handleSend = async () => {
     if (individualMessage.trim() || selectedImageFile || droppedFile) {
+      setIsSending(true); // Устанавливаем состояние отправки
       let imageUrlToUse = selectedImageUrl;
       let fileToUpload = selectedImageFile;
 
-      if (droppedFile) {
-        fileToUpload = droppedFile;
-        setIsUploadingImage(true); // Устанавливаем состояние загрузки
-        try {
-          const uploadedUrl = await onImageUpload(provider, droppedFile); // Загружаем перетащенный файл
-          imageUrlToUse = uploadedUrl;
-        } catch (error) {
-          console.error("Ошибка при загрузке перетащенного файла:", error);
-          setIsUploadingImage(false); // Сбрасываем состояние загрузки при ошибке
-          setDragDropError('Ошибка при загрузке файла. Попробуйте еще раз.');
-          setTimeout(() => setDragDropError(''), 3000);
-          return; // Прекращаем отправку, если загрузка не удалась
-        } finally {
-          setIsUploadingImage(false); // Сбрасываем состояние загрузки
+      try {
+        if (droppedFile) {
+          fileToUpload = droppedFile;
+          setIsUploadingImage(true); // Устанавливаем состояние загрузки
+          try {
+            const uploadedUrl = await onImageUpload(provider, droppedFile); // Загружаем перетащенный файл
+            imageUrlToUse = uploadedUrl;
+          } catch (error) {
+            console.error("Ошибка при загрузке перетащенного файла:", error);
+            setIsUploadingImage(false); // Сбрасываем состояние загрузки при ошибке
+            setDragDropError('Ошибка при загрузке файла. Попробуйте еще раз.');
+            setTimeout(() => setDragDropError(''), 3000);
+            return; // Прекращаем отправку, если загрузка не удалась
+          } finally {
+            setIsUploadingImage(false); // Сбрасываем состояние загрузки
+          }
         }
-      }
 
-      onSendMessage(provider, individualMessage.trim(), imageUrlToUse); // Передаем URL изображения
-      setIndividualMessage(''); // Очищаем поле после отправки
-      handleClearImage(); // Очищаем выбранное изображение
-      setDroppedFile(null); // Очищаем перетащенный файл
+        await onSendMessage(provider, individualMessage.trim(), imageUrlToUse); // Передаем URL изображения
+        setIndividualMessage(''); // Очищаем поле после отправки
+        handleClearImage(); // Очищаем выбранное изображение
+        setDroppedFile(null); // Очищаем перетащенный файл
+      } finally {
+        setIsSending(false); // Сбрасываем состояние отправки в конце функции, независимо от успеха/ошибки
+      }
     }
   };
 
@@ -300,8 +307,8 @@ const ProviderCard = React.forwardRef(({
       const file = files[0];
       if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
         setDroppedFile(file);
-        setSelectedImageFile(null); // Очищаем выбранный файл, если есть
-        setSelectedImageUrl(null); // Очищаем URL, если есть
+        setSelectedImageFile(file); // Устанавливаем выбранный файл
+        setSelectedImageUrl(URL.createObjectURL(file)); // Для немедленного предпросмотра
         setIndividualMessage(''); // Очищаем текстовое сообщение
       } else {
         setDragDropError('Поддерживаются только изображения и видеофайлы.');
@@ -435,7 +442,19 @@ const ProviderCard = React.forwardRef(({
                             </Button>
                           </div>
                         )}
-                        {msg.content.match(/\.(jpeg|jpg|png|gif|webp|svg)(\?.*)?$/i) ? (
+                        {msg.content.match(/\.(mp4|webm|ogg)(\?.*)?$/i) ? (
+                          <div className="mb-2">
+                            <video controls src={msg.content} className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() => window.open(msg.content, '_blank')}
+                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                            >
+                              Открыть оригинал
+                            </Button>
+                          </div>
+                        ) : msg.content.match(/\.(jpeg|jpg|png|gif|webp|svg)(\?.*)?$/i) ? (
                           <div className="mb-2">
                             <img src={msg.content} alt="Generated image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
                             <Button
@@ -483,6 +502,12 @@ const ProviderCard = React.forwardRef(({
             <span>Обработка запроса...</span>
           </div>
         )}
+        {isSending && (
+          <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Обработка запроса...</span>
+          </div>
+        )}
         {response?.status === 'error' && response?.error && (
           <Alert variant="destructive" className="py-2 mt-2">
             <AlertTriangle className="h-4 w-4" />
@@ -525,6 +550,12 @@ const ProviderCard = React.forwardRef(({
       {/* Поле ввода для индивидуального сообщения */}
       {showInputField ? (
         <div className="p-2 border-t">
+          {balance < 1 && (
+            <Alert variant="destructive" className="mb-2 py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">⚠️ Недостаточно токенов для отправки сообщения</AlertDescription>
+            </Alert>
+          )}
           {(selectedImageUrl || isUploadingImage) && (
             <div className="flex justify-end mb-2 relative h-[100px]"> {/* Добавлена фиксированная высота для загрузки */}
               {isUploadingImage ? (
@@ -546,58 +577,77 @@ const ProviderCard = React.forwardRef(({
               )}
             </div>
           )}
-          <div className="flex gap-2 items-center">
-            {(provider === 'veo3' || provider === 'imagen') && (
-              <>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={handleImageSelect}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-3"
-                  title="Загрузить изображение или видео"
-                  ref={imageUploadButtonRef} // Привязываем ref к кнопке
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-            <Textarea
-              ref={inputRef}
-              placeholder={`Запрос для ${getProviderName(provider)}...`}
-              value={individualMessage}
-              onChange={(e) => setIndividualMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onBlur={(e) => {
-                // Проверяем, куда ушел фокус
-                if (
-                  !individualMessage.trim() &&
-                  !selectedImageFile &&
-                  e.relatedTarget !== fileInputRef.current &&
-                  e.relatedTarget !== imageUploadButtonRef.current &&
-                  !droppedFile // Добавляем проверку на droppedFile
-                ) {
-                  setShowInputField(false);
-                }
-              }}
-              className="min-h-[40px] resize-none text-sm"
-              rows={1}
-            />
-            <Button
-              size="sm"
-              onClick={handleSend}
-              disabled={(!individualMessage.trim() && !selectedImageFile && !droppedFile) || isLoading || isUploadingImage}
-              className="px-6"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+
+          {isSending ? (
+            <div className="flex items-center justify-center gap-2 text-gray-600 h-[40px] border rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Загрузка...</span>
+            </div>
+          ) : (
+            <div className="flex gap-2 items-center relative"> {/* Added relative positioning */}
+              {(provider === 'veo3' || provider === 'imagen') && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                    disabled={balance < 1 || isLoading || isSending} // Disable if no tokens, global loading, or local sending
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3"
+                    title="Загрузить изображение или видео"
+                    ref={imageUploadButtonRef} // Привязываем ref к кнопке
+                    disabled={balance < 1 || isLoading || isSending} // Disable if no tokens, global loading, or local sending
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              <Textarea
+                ref={inputRef}
+                placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : `Запрос для ${getProviderName(provider)}...`}
+                value={individualMessage}
+                onChange={(e) => setIndividualMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onBlur={(e) => {
+                  // Проверяем, куда ушел фокус
+                  if (
+                    !individualMessage.trim() &&
+                    !selectedImageFile &&
+                    e.relatedTarget !== fileInputRef.current &&
+                    e.relatedTarget !== imageUploadButtonRef.current &&
+                    !droppedFile // Добавляем проверку на droppedFile
+                  ) {
+                    setShowInputField(false);
+                  }
+                }}
+                className="min-h-[40px] resize-none text-sm flex-1" // Added flex-1
+                rows={1}
+                disabled={isLoading || isSending || balance < 1} // Disable if global loading, local sending, or no balance
+              />
+              <Button
+                size="sm"
+                onClick={handleSend}
+                disabled={(!individualMessage.trim() && !selectedImageFile && !droppedFile) || isLoading || isUploadingImage || isSending || balance < 1} // Disable if global loading, upload, local sending, no content, or no balance
+                className="px-6"
+              >
+                <Send className="h-4 w-4" /> {/* Always show send icon */}
+              </Button>
+
+              {(isLoading || isSending) && ( // Show loading message as an overlay
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 dark:bg-black dark:bg-opacity-80 rounded-md z-10">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>Обработка запроса...</span>
+                </div>
+              )}
+            </div>
+          )}
+          
           {droppedFile && (
             <div className="mt-2 p-2 border rounded-md flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1026,20 +1076,12 @@ const MultiChat = () => {
       }
   };
 
-  const sendToProvider = async (provider, messageToSend) => {
+  const sendToProvider = async (provider, messageToSend, imageUrl = null) => {
     try {
       const systemPrompt = useCustomPrompt ? customSystemPrompt : defaultSystemPrompt;
       
       if (!csrfToken || !user?._id) {
-        setResponses(prev => ({
-          ...prev,
-          [provider]: {
-            status: 'error',
-            content: '',
-            error: 'Ошибка безопасности: CSRF токен или пользователь не найден'
-          }
-        }));
-        return;
+        return { status: 'error', content: '', error: 'Ошибка безопасности: CSRF токен или пользователь не найден' };
       }
 
       // Если это первое сообщение в чате, отправляем запрос на создание названия
@@ -1060,7 +1102,7 @@ const MultiChat = () => {
             }),
           });
           setIsFirstMessage(false); // Сбрасываем флаг после первого сообщения
-          loadUserChatHistories(); // Обновляем список чатов, чтобы увидеть новое название
+          // Note: loadUserChatHistories will be called once after all providers respond
         } catch (namingError) {
           console.error('Error generating chat name for single provider:', namingError);
           // Не блокируем отправку сообщения, даже если название не сгенерировалось
@@ -1069,15 +1111,7 @@ const MultiChat = () => {
 
       // 🔒 ПРОВЕРЯЕМ БАЛАНС ПЕРЕД ОТПРАВКОЙ
       if (balance < 1) {
-        setResponses(prev => ({
-          ...prev,
-          [provider]: {
-            status: 'error',
-            content: '',
-            error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.'
-          }
-        }));
-        return;
+        return { status: 'error', content: '', error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.' };
       }
       
       const response = await fetch(`${API_BASE}/api/multi-chat/${provider}`, {
@@ -1092,73 +1126,23 @@ const MultiChat = () => {
           message: messageToSend.trim(),
           systemPrompt: systemPrompt,
           chatId: currentChatId, // Передаем currentChatId
-          ...(providerImageFiles[provider] && { imageUrl: providerImageFiles[provider].url }) // Используем загруженный URL, если есть
+          ...(imageUrl && { imageUrl }), // Передаем imageUrl, если он есть
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        
-        // Обновляем ответ для конкретного провайдера
-        setResponses(prev => ({
-          ...prev,
-          [provider]: {
-            status: data.status,
-            content: data.content,
-            error: data.error,
-            context: data.context
-          }
-        }));
-        
-        // Обновляем баланс если есть информация о токенах
-        if (data.tokensDeducted && data.newBalance !== undefined) {
-          updateBalance(data.newBalance);
-        }
-        
-        // Обновляем историю чата если успешно
-        if (data.status === 'success') {
-          loadChatHistory(provider, currentChatId);
-          setTimeout(() => scrollToBottom(provider), 300);
-        }
+        return { status: data.status, content: data.content, error: data.error, context: data.context, tokensDeducted: data.tokensDeducted, newBalance: data.newBalance };
       } else {
         const errorData = await response.json();
-        
-        // 🔒 Специальная обработка ошибки недостаточного баланса
         if (response.status === 402 && errorData.error === 'INSUFFICIENT_BALANCE') {
-          setResponses(prev => ({
-            ...prev,
-            [provider]: {
-              status: 'error',
-              content: '',
-              error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.',
-              insufficientBalance: true,
-              currentBalance: errorData.currentBalance,
-              requiredTokens: errorData.requiredTokens
-            }
-          }));
-          
-          // Показываем общую ошибку
-          setError('Недостаточно токенов для отправки сообщения. Пополните баланс.');
+          return { status: 'error', content: '', error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.', insufficientBalance: true, currentBalance: errorData.currentBalance, requiredTokens: errorData.requiredTokens };
         } else {
-          setResponses(prev => ({
-            ...prev,
-            [provider]: {
-              status: 'error',
-              content: '',
-              error: errorData.message || 'Ошибка запроса'
-            }
-          }));
+          return { status: 'error', content: '', error: errorData.message || 'Ошибка запроса' };
         }
       }
     } catch (error) {
-      setResponses(prev => ({
-        ...prev,
-        [provider]: {
-          status: 'error',
-          content: '',
-          error: 'Ошибка сети'
-        }
-      }));
+      return { status: 'error', content: '', error: 'Ошибка сети' };
     }
   };
 
@@ -1225,63 +1209,85 @@ const MultiChat = () => {
       const providersInCurrentCategory = selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory);
       const promises = providersInCurrentCategory.map(provider => {
         const messageContent = message.trim();
-        return sendToProvider(provider, messageContent);
+        // Pass imageUrl if it exists for this provider
+        const imageUrl = providerImageFiles[provider]?.url || null;
+        return sendToProvider(provider, messageContent, imageUrl);
       });
       
       // Используем Promise.allSettled для обработки всех результатов, даже если есть ошибки
       const results = await Promise.allSettled(promises);
       
-      // Обновляем ответы для каждого провайдера на основе результатов Promise.allSettled
-      results.forEach((result, index) => {
-        const provider = providersInCurrentCategory[index];
-        if (result.status === 'fulfilled') {
-          // Предполагаем, что sendToProvider уже обновил responses, если был успех
-          // Если sendToProvider возвращает что-то, это можно обработать здесь.
-          // В текущей реализации sendToProvider обновляет состояние напрямую,
-          // поэтому здесь, по сути, не нужно делать ничего, кроме сброса общей ошибки.
-        } else {
-          // Обработка отклоненных промисов (т.е. ошибок, которые не были пойманы sendToProvider)
-          // В данном случае sendToProvider должен был поймать большинство ошибок и обновить состояние responses.
-          // Но если по какой-то причине промис отклонился здесь, мы можем установить общую ошибку сети.
-          setResponses(prev => ({
-            ...prev,
-            [provider]: {
-              status: 'error',
-              content: '',
-              error: 'Ошибка сети'
-            }
-          }));
-        }
-      });
+      const newResponses = {};
+      let anyError = false;
+      let totalTokensDeducted = 0;
+      let hasInsufficientBalance = false;
+      let currentBalance = balance;
 
-      // Общая обработка ошибок, если все провайдеры вернули ошибку сети
-      const anyError = Object.values(responses).some(r => r.status === 'error');
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const provider = providersInCurrentCategory[i];
+
+        if (result.status === 'fulfilled') {
+          const data = result.value;
+          newResponses[provider] = { status: data.status, content: data.content, error: data.error, context: data.context };
+          if (data.tokensDeducted) {
+            totalTokensDeducted += data.tokensDeducted;
+            currentBalance = data.newBalance !== undefined ? data.newBalance : currentBalance; // Update balance from successful response
+          }
+          if (data.status === 'success') {
+            loadChatHistory(provider, currentChatId);
+            setTimeout(() => scrollToBottom(provider), 300);
+          }
+        } else {
+          // Handle rejected promises (network errors, etc.)
+          newResponses[provider] = { status: 'error', content: '', error: 'Ошибка сети' };
+          anyError = true;
+        }
+
+        // Special handling for insufficient balance, which might come as a fulfilled promise with error status
+        if (newResponses[provider].error?.includes('Недостаточно токенов')) {
+          hasInsufficientBalance = true;
+          setError(newResponses[provider].error);
+        }
+      }
+
+      setResponses(prev => ({ ...prev, ...newResponses }));
+
+      if (!hasInsufficientBalance) {
+        // Only update balance if no insufficient balance error occurred globally
+        updateBalance(currentBalance);
+      }
+      
+      // After all promises are settled and state is updated, load chat histories and update balance
+      if (isFirstMessage && currentChatId) {
+        loadUserChatHistories(); // Обновляем список чатов, чтобы увидеть новое название
+      }
+
       if (anyError) {
-        setError('Ошибка при отправке запросов');
+        // Only set general error if it's not an insufficient balance error already handled
+        if (!hasInsufficientBalance) {
+          setError('Ошибка при отправке запросов');
+        }
       } else {
         setError('');
       }
 
-      // Обновляем историю чата для успешных провайдеров
-      // Эта часть должна быть внутри sendToProvider или Promise.allSettled результата
-      // Так как sendToProvider уже вызывает loadChatHistory при успехе, этот блок не нужен.
-      
       // Очищаем поле ввода после отправки
       setMessage('');
       
     } catch (error) {
       setError('Ошибка при отправке запросов');
       
-      // Устанавливаем ошибку для всех провайдеров
+      // Устанавливаем ошибку для всех провайдеров, которые были выбраны
       const errorResponses = {};
-      selectedProviders.forEach(provider => {
+      selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).forEach(provider => {
         errorResponses[provider] = {
           status: 'error',
           content: '',
           error: 'Ошибка сети'
         };
       });
-      setResponses(errorResponses);
+      setResponses(prev => ({ ...prev, ...errorResponses }));
     } finally {
       setLoading(false);
     }
@@ -1704,8 +1710,8 @@ const MultiChat = () => {
       const file = files[0];
       if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
         setDroppedFile(file);
-        setSelectedImageFile(null); // Очищаем выбранный файл, если есть
-        setSelectedImageUrl(null); // Очищаем URL, если есть
+        setSelectedImageFile(file); // Устанавливаем выбранный файл
+        setSelectedImageUrl(URL.createObjectURL(file)); // Для немедленного предпросмотра
         setIndividualMessage(''); // Очищаем текстовое сообщение
       } else {
         setDragDropError('Поддерживаются только изображения и видеофайлы.');
@@ -2144,6 +2150,8 @@ const MultiChat = () => {
                           chatRef={el => chatRefs.current[provider] = el}
                           onSendMessage={sendToProvider} // Передаем функцию
                           onImageUpload={handleProviderImageUpload} // Передаем функцию
+                          balance={balance} // Передаем баланс
+                          isLoading={loading} // Передаем глобальный loading
                         />
                       )) : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
                         <SortableProviderCard 
@@ -2152,7 +2160,7 @@ const MultiChat = () => {
                           response={responses[provider]}
                           history={chatHistories[provider]}
                           onClearHistory={() => clearChatHistory(provider)}
-                          isLoading={loading && responses[provider]?.status === 'loading'}
+                          isLoading={loading} // Передаем глобальный loading
                           isExpanded={expandedProviders[provider]}
                           onToggleExpand={() => toggleProviderExpand(provider)}
                           size={providerSizes[provider]}
@@ -2160,6 +2168,7 @@ const MultiChat = () => {
                           chatRef={el => chatRefs.current[provider] = el}
                           onSendMessage={sendToProvider} // Передаем функцию
                           onImageUpload={handleProviderImageUpload} // Передаем функцию
+                          balance={balance} // Передаем баланс
                         />
                       ))}
                     </SortableContext>
@@ -2172,6 +2181,7 @@ const MultiChat = () => {
                           isExpanded={expandedProviders[activeId]}
                           size={providerSizes[activeId]}
                           onImageUpload={handleProviderImageUpload}
+                          balance={balance} // Передаем баланс
                         />
                       ) : null}
                     </DragOverlay>
@@ -2209,15 +2219,21 @@ const MultiChat = () => {
           
           {selectedCategory !== 'mix' && (
             <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <Textarea
                   placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className={`min-h-[50px] resize-none w-full ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
-                  disabled={loading || selectedProviders.length === 0 || balance < 1} 
+                  disabled={loading || selectedProviders.length === 0 || balance < 1}
                 />
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 dark:bg-black dark:bg-opacity-80 rounded-md z-10">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Обработка запроса...</span>
+                  </div>
+                )}
               </div>
               <Button
                 onClick={sendToAllProviders}

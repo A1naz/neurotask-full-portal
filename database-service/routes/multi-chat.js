@@ -120,6 +120,8 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             aiResponseData.data.images.length > 0
           ) {
             contentToSend = aiResponseData.data.images.join("\n");
+          } else if (aiResponseData.data.provider === "veo3" && aiResponseData.data.videoUrl) {
+            contentToSend = aiResponseData.data.videoUrl;
           } else {
             contentToSend = aiResponseData.data.content ||
             aiResponseData.data.response ||

@@ -321,16 +321,16 @@ const ProviderCard = React.forwardRef(({
       {...props}
       data-provider={provider}
       className={cn(
-        `${getStatusColor(response?.status || 'idle')} relative flex-shrink-0 transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`,
+        `${getStatusColor(response?.status || 'idle')} relative transition-all duration-200 ease-in-out flex flex-col !py-2 !gap-2 overflow-hidden`,
         {
           'border-2 border-dashed border-blue-500 bg-blue-50': isDraggingOver,
         }
       )}
       style={{
-        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : '400px'),
-        height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : '500px'),
-        minWidth: isExpanded ? '100%' : '400px',
-        minHeight: isExpanded ? 'auto' : '400px',
+        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : 'min(100%, 400px)'),
+        height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : 'auto'),
+        minWidth: isExpanded ? '100%' : 'auto',
+        minHeight: isExpanded ? 'auto' : 'auto',
         maxHeight: isExpanded ? 'auto' : '800px',
         order: isExpanded ? -1 : 0,
         position: 'relative',
@@ -341,7 +341,7 @@ const ProviderCard = React.forwardRef(({
       }}
     >
       <CardHeader className="pb-1 pt-2 !px-2 !gap-1">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span {...dragHandleListeners} className="cursor-grab touch-none">
               <GripVertical size={18} className="text-gray-400" />
@@ -349,7 +349,7 @@ const ProviderCard = React.forwardRef(({
             <span className="text-lg">{getProviderIcon(provider)}</span>
             <span className="font-medium">{getProviderName(provider)}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {getStatusIcon(response?.status || 'idle')}
             <Badge variant="outline" className="text-xs">
               {response?.status || 'idle'}
@@ -396,52 +396,87 @@ const ProviderCard = React.forwardRef(({
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}>
-        {history && history.length > 0 && (
-          <div 
-            ref={chatRef}
-            className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-0" 
-          >
-            <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
-              <span>История чата ({history.length} сообщений)</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearHistory}
-                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
-              {history.map((msg, index) => (
-                <div key={index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-medium mt-1">
-                      {msg.role === 'user' ? '👤' : '🤖'}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(msg.timestamp).toLocaleTimeString()}
-                      </p>
+        {/* Always render a container for chat history, with a minimum height */}
+        <div 
+          ref={chatRef}
+          className="flex-1 overflow-y-auto border rounded p-1 bg-gray-50 min-h-[150px] flex flex-col justify-between"
+        >
+          {history && history.length > 0 ? (
+            <>
+              <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+                <span>История чата ({history.length} сообщений)</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClearHistory}
+                  className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
+                {history.map((msg, index) => (
+                  <div key={index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs font-medium mt-1">
+                        {msg.role === 'user' ? '👤' : '🤖'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        {msg.imageUrl && msg.role === 'user' && (
+                          <div className="mb-2">
+                            <img src={msg.imageUrl} alt="User uploaded image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() => window.open(msg.imageUrl, '_blank')}
+                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                            >
+                              Открыть оригинал
+                            </Button>
+                          </div>
+                        )}
+                        {msg.content.match(/\.(jpeg|jpg|png|gif|webp|svg)(\?.*)?$/i) ? (
+                          <div className="mb-2">
+                            <img src={msg.content} alt="Generated image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() => window.open(msg.content, '_blank')}
+                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                            >
+                              Открыть оригинал
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      {msg.role === 'assistant' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyResponse(msg.content)}
+                          className="h-6 w-6 p-0 ml-2"
+                          title="Копировать ответ"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                    {msg.role === 'assistant' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyResponse(msg.content)}
-                        className="h-6 w-6 p-0 ml-2"
-                        title="Копировать ответ"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-gray-500 py-4 flex-1 flex flex-col items-center justify-center">
+              <MessageSquare className="h-6 w-6 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Начните новый чат или выберите существующий.</p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
         {response?.status === 'loading' && (
           <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -1689,7 +1724,7 @@ const MultiChat = () => {
   };
 
   return (
-    <div className="flex flex-col h-full p-6 relative">
+    <div className="flex flex-col h-full p-2 sm:p-6 relative">
       {/* Боковая панель для истории чатов */}
       <div
         className={cn(
@@ -1730,22 +1765,23 @@ const MultiChat = () => {
        <div 
         className="flex-1 overflow-y-auto pb-4"
        >
-        {/* Фиксированная область сверху */}
-        <div className="flex-shrink-0">
+        {/* Область сверху */}
+        <div className="flex-shrink">
                  {/* Заголовок с кнопками управления */}
                   <Card className="mb-4">
                     <CardHeader className="pb-2">
-             <div className="flex items-center justify-between">
+             <div className="flex flex-wrap items-center justify-between gap-2">
                <CardTitle className="flex items-center gap-2">
                  <Sparkles className="w-5 h-5" />
                  Мульти-чат AI
                </CardTitle>
-               <div className="flex items-center gap-2">
+               <div className="flex flex-wrap items-center gap-2">
                  <Button
                    variant="outline"
                    size="sm"
                    onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
                    title={isHeaderCollapsed ? "Развернуть панель" : "Свернуть панель"}
+                   className="w-full sm:w-auto"
                  >
                    {isHeaderCollapsed ? (
                      <ChevronDown className="h-4 w-4" />
@@ -1764,6 +1800,7 @@ const MultiChat = () => {
                      }
                      setShowSettings(!showSettings);
                    }}
+                   className="w-full sm:w-auto"
                  >
                    <Settings className="h-4 w-4 mr-2" />
                    Настройки
@@ -1773,6 +1810,7 @@ const MultiChat = () => {
                      variant="outline"
                      size="sm"
                      onClick={exportResults}
+                     className="w-full sm:w-auto"
                    >
                      <Download className="h-4 w-4 mr-2" />
                      Экспорт
@@ -1787,7 +1825,7 @@ const MultiChat = () => {
                      }
                    }}
                    disabled={isClearingChats}
-                   className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                   className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 w-full sm:w-auto"
                    title="Очистить все чаты и начать новый"
                  >
                    {isClearingChats ? (
@@ -1811,7 +1849,7 @@ const MultiChat = () => {
            </CardHeader>
                       {!isHeaderCollapsed && (
               <CardContent className="pt-0">
-                <p className="text-gray-600 mb-2">
+                <p className="text-gray-600 mb-4">
                Отправьте запрос одновременно во все подключенные AI сервисы и получите ответы в реальном времени.
              </p>
              
@@ -1824,173 +1862,6 @@ const MultiChat = () => {
                {stats.loading > 0 && <Badge variant="outline" className="bg-blue-100 text-blue-800">{stats.loading} загрузка</Badge>}
              </div>
            )}
-
-             {/* Выбор провайдеров */}
-             <Tabs defaultValue="chat" className="w-full" value={selectedCategory} onValueChange={setSelectedCategory}>
-               <TabsList className="grid w-full grid-cols-4">
-                 <TabsTrigger value="chat" className="flex items-center gap-2">
-                   <MessageSquare className="w-4 h-4" />
-                   Основные
-                 </TabsTrigger>
-                 <TabsTrigger value="video" className="flex items-center gap-2">
-                   <Video className="w-4 h-4" />
-                   Видео
-                 </TabsTrigger>
-                 <TabsTrigger value="audio" className="flex items-center gap-2">
-                   <Music className="w-4 h-4" />
-                   Аудио
-                 </TabsTrigger>
-                 <TabsTrigger value="image" className="flex items-center gap-2">
-                   <Image className="w-4 h-4" />
-                   Изображения
-                 </TabsTrigger>
-               </TabsList>
-
-               {/* Контент вкладок */}
-               <TabsContent value="chat" className="mt-6">
-                 <Label className="text-sm font-medium mb-2 block">Выберите основные провайдеры:</Label>
-                 <div className="flex flex-wrap gap-2">
-                   {chatProviders.map(provider => (
-                     <Button
-                       key={provider}
-                       variant={selectedProviders.includes(provider) ? "default" : "outline"}
-                       size="sm"
-                       onClick={() => toggleProvider(provider)}
-                       className="flex items-center gap-2"
-                     >
-                       <span>{getProviderIcon(provider)}</span>
-                       {getProviderName(provider)}
-                     </Button>
-                   ))}
-                 </div>
-               </TabsContent>
-
-               <TabsContent value="video" className="mt-6">
-                 <Label className="text-sm font-medium mb-2 block">Выберите видео провайдеры:</Label>
-                 <div className="flex flex-wrap gap-2">
-                   {videoProviders.map(provider => (
-                     <Button
-                       key={provider}
-                       variant={selectedProviders.includes(provider) ? "default" : "outline"}
-                       size="sm"
-                       onClick={() => toggleProvider(provider)}
-                       className="flex items-center gap-2"
-                     >
-                       <span>{getProviderIcon(provider)}</span>
-                       {getProviderName(provider)}
-                     </Button>
-                   ))}
-                 </div>
-               </TabsContent>
-
-               <TabsContent value="audio" className="mt-6">
-                 <Label className="text-sm font-medium mb-2 block">Выберите аудио провайдеры:</Label>
-                 <div className="flex flex-wrap gap-2">
-                   {audioProviders.length > 0 ? (
-                     audioProviders.map(provider => (
-                       <Button
-                         key={provider}
-                         variant={selectedProviders.includes(provider) ? "default" : "outline"}
-                         size="sm"
-                         onClick={() => toggleProvider(provider)}
-                         className="flex items-center gap-2"
-                       >
-                         <span>{getProviderIcon(provider)}</span>
-                         {getProviderName(provider)}
-                       </Button>
-                     ))
-                   ) : (
-                     <p className="text-gray-500 text-sm">Аудио провайдеры пока недоступны.</p>
-                   )}
-                 </div>
-               </TabsContent>
-
-               <TabsContent value="image" className="mt-6">
-                 <Label className="text-sm font-medium mb-2 block">Выберите провайдеры изображений:</Label>
-                 <div className="flex flex-wrap gap-2">
-                   {imageProviders.map(provider => (
-                     <Button
-                       key={provider}
-                       variant={selectedProviders.includes(provider) ? "default" : "outline"}
-                       size="sm"
-                       onClick={() => toggleProvider(provider)}
-                       className="flex items-center gap-2"
-                     >
-                       <span>{getProviderIcon(provider)}</span>
-                       {getProviderName(provider)}
-                     </Button>
-                   ))}
-                 </div>
-               </TabsContent>
-             </Tabs>
-                        {/* Статистика */}
-           {stats.total > 0 && (
-             <div className="flex items-center gap-4 mb-4 mt-6">
-               <Badge variant="secondary">{stats.total} провайдеров</Badge>
-               {stats.success > 0 && <Badge variant="default" className="bg-green-100 text-green-800">{stats.success} успешно</Badge>}
-               {stats.error > 0 && <Badge variant="destructive">{stats.error} ошибок</Badge>}
-               {stats.loading > 0 && <Badge variant="outline" className="bg-blue-100 text-blue-800">{stats.loading} загрузка</Badge>}
-             </div>
-           )}
-
-             {/* Выбор провайдеров */}
-             {/* Этот блок заменен Tabs UI, поэтому он больше не нужен */}
-             {/* <div className="space-y-2">
-               <Label className="text-sm font-medium">Выберите провайдеры:</Label>
-               {activeProviders.length > 0 ? (
-                 <div className="space-y-3">
-                   <div className="flex flex-wrap gap-2">
-                     {activeProviders.map(provider => (
-                       <Button
-                         key={provider}
-                         variant={selectedProviders.includes(provider) ? "default" : "outline"}
-                         size="sm"
-                         onClick={() => toggleProvider(provider)}
-                         className="flex items-center gap-2"
-                       >
-                         <span>{getProviderIcon(provider)}</span>
-                         {getProviderName(provider)}
-                       </Button>
-                     ))}
-                   </div>
-                   
-                   {selectedProviders.length > 0 && (
-                     <div className="space-y-2">
-                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                         <Zap className="h-4 w-4" />
-                         <span>
-                           Будет списано: <strong>{selectedProviders.length} токенов</strong> 
-                           (по 1 за каждый провайдер)
-                         </span>
-                       </div>
-                       
-                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                         <MessageSquare className="h-4 w-4" />
-                         <span>
-                           Максимум сообщений в чате: <strong>{getMaxMessageCount()}/50</strong>
-                         </span>
-                       </div>
-                       
-                       {checkMessageLimit() && (
-                         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                           <AlertTriangle className="h-4 w-4" />
-                           <span>
-                             Достигнут лимит в 50 сообщений. Очистите контекст для продолжения.
-                           </span>
-                         </div>
-                       )}
-                     </div>
-                   )}
-                 </div>
-               ) : (
-                 <div className="text-center py-4">
-                   <p className="text-gray-500 mb-2">Нет активных AI провайдеров</p>
-                   <p className="text-sm text-gray-400">
-                     Перейдите в раздел "Настройки AI" и включите нужные провайдеры
-                   </p>
-                 </div>
-               )}
-             </div> */}
              
              {selectedProviders.length > 0 && ( // Показываем только если есть выбранные провайдеры
                <div className="space-y-2 mt-4">
@@ -2032,6 +1903,126 @@ const MultiChat = () => {
                     </CardContent>
             )}
        </Card>
+
+       <Tabs defaultValue="chat" className="w-full mb-6" value={selectedCategory} onValueChange={setSelectedCategory}>
+         <TabsList className="flex flex-col w-full gap-2 p-1 bg-gray-100 rounded-md sm:flex-row">
+           <TabsTrigger value="chat" className="flex items-center gap-2 w-full sm:w-auto">
+             <MessageSquare className="w-4 h-4" />
+             Основные
+           </TabsTrigger>
+           <TabsTrigger value="video" className="flex items-center gap-2 w-full sm:w-auto">
+             <Video className="w-4 h-4" />
+             Видео
+           </TabsTrigger>
+           <TabsTrigger value="audio" className="flex items-center gap-2 w-full sm:w-auto">
+             <Music className="w-4 h-4" />
+             Аудио
+           </TabsTrigger>
+           <TabsTrigger value="image" className="flex items-center gap-2 w-full sm:w-auto">
+             <Image className="w-4 h-4" />
+             Изображения
+           </TabsTrigger>
+           <TabsTrigger value="mix" className="flex items-center gap-2 w-full sm:w-auto">
+             <Sparkles className="w-4 h-4" />
+             Микс
+           </TabsTrigger>
+         </TabsList>
+
+         {/* Контент вкладок */}
+         <TabsContent value="chat" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите основные провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {chatProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="video" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите видео провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {videoProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="audio" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите аудио провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {audioProviders.length > 0 ? (
+               audioProviders.map(provider => (
+                 <Button
+                   key={provider}
+                   variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                   size="sm"
+                   onClick={() => toggleProvider(provider)}
+                   className="flex items-center gap-2"
+                 >
+                   <span>{getProviderIcon(provider)}</span>
+                   {getProviderName(provider)}
+                 </Button>
+               ))
+             ) : (
+               <p className="text-gray-500 text-sm">Аудио провайдеры пока недоступны.</p>
+             )}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="image" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Выберите провайдеры изображений:</Label>
+           <div className="flex flex-wrap gap-2">
+             {imageProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+
+         <TabsContent value="mix" className="mt-6">
+           <Label className="text-sm font-medium mb-2 block">Все активные провайдеры:</Label>
+           <div className="flex flex-wrap gap-2">
+             {activeProviders.map(provider => (
+               <Button
+                 key={provider}
+                 variant={selectedProviders.includes(provider) ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => toggleProvider(provider)}
+                 className="flex items-center gap-2"
+               >
+                 <span>{getProviderIcon(provider)}</span>
+                 {getProviderName(provider)}
+               </Button>
+             ))}
+           </div>
+         </TabsContent>
+       </Tabs>
 
                              {/* Настройки */}
          {showSettings && !isHeaderCollapsed && (
@@ -2135,10 +2126,26 @@ const MultiChat = () => {
                     onDragEnd={handleDragEnd}
                   >
                     <SortableContext 
-                      items={selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory)}
+                      items={selectedCategory === 'mix' ? selectedProviders : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory)}
                       strategy={verticalListSortingStrategy}
                     >
-                      {selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
+                      {selectedCategory === 'mix' ? selectedProviders.map(provider => (
+                        <SortableProviderCard 
+                          key={provider} 
+                          provider={provider}
+                          response={responses[provider]}
+                          history={chatHistories[provider]}
+                          onClearHistory={() => clearChatHistory(provider)}
+                          isLoading={loading && responses[provider]?.status === 'loading'}
+                          isExpanded={expandedProviders[provider]}
+                          onToggleExpand={() => toggleProviderExpand(provider)}
+                          size={providerSizes[provider]}
+                          onResizeStart={(e, p) => handleResizeStart(e, p)}
+                          chatRef={el => chatRefs.current[provider] = el}
+                          onSendMessage={sendToProvider} // Передаем функцию
+                          onImageUpload={handleProviderImageUpload} // Передаем функцию
+                        />
+                      )) : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
                         <SortableProviderCard 
                           key={provider} 
                           provider={provider}
@@ -2200,39 +2207,41 @@ const MultiChat = () => {
             </Alert>
           )}
           
-                     <div className="flex gap-2">
-                            <div className="flex-1">
-               <Textarea
-                 placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
-                 value={message}
-                 onChange={(e) => setMessage(e.target.value)}
-                 onKeyPress={handleKeyPress}
-                 className={`min-h-[50px] resize-none ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
-                 disabled={loading || selectedProviders.length === 0 || balance < 1} 
-               />
-             </div>
-             <Button
-               onClick={sendToAllProviders}
-               disabled={loading || !message.trim() || selectedProviders.length === 0 || balance < 1}
-               className="px-6"
-               title={`loading: ${loading}, message: ${!!message.trim()}, providers: ${selectedProviders.length}, balance: ${balance}`}
-             >
-               {loading ? (
-                 <Loader2 className="h-4 w-4 animate-spin" />
-               ) : (
-                 <Send className="h-4 w-4" />
-               )}
-             </Button>
-           </div>
-          
-                                                                                                                                   <div className="mt-0.5 text-xs text-gray-500">
-                Нажмите Enter для отправки, Shift+Enter для новой строки
-                {balance < 1 && (
-                  <span className="ml-2 text-red-500 font-medium">
-                    ⚠️ Недостаточно токенов для отправки сообщения
-                  </span>
-                )}
+          {selectedCategory !== 'mix' && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1">
+                <Textarea
+                  placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className={`min-h-[50px] resize-none w-full ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
+                  disabled={loading || selectedProviders.length === 0 || balance < 1} 
+                />
               </div>
+              <Button
+                onClick={sendToAllProviders}
+                disabled={loading || !message.trim() || selectedProviders.length === 0 || balance < 1}
+                className="px-6 w-full sm:w-auto"
+                title={`loading: ${loading}, message: ${!!message.trim()}, providers: ${selectedProviders.length}, balance: ${balance}`}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
+          
+          <div className="mt-0.5 text-xs text-gray-500">
+            Нажмите Enter для отправки, Shift+Enter для новой строки
+            {balance < 1 && (
+              <span className="ml-2 text-red-500 font-medium">
+                ⚠️ Недостаточно токенов для отправки сообщения
+              </span>
+            )}
+          </div>
                                          </div>
            </Card>
      </div>

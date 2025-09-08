@@ -39,7 +39,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
     }
 
     const defaultChatTitle = `Чат ${new Date().toLocaleDateString("ru-RU")}`; // Placeholder title, will only be used if chat is new
-    
+
     // Добавляем сообщение в историю чата
     const chatHistory = await ChatHistory.getOrCreate(
       userId,
@@ -50,11 +50,11 @@ router.post("/:provider", requireApiKey, async (req, res) => {
     // Добавляем сообщение пользователя
     await chatHistory.addMessage("user", message, imageUrl); // Передаем imageUrl
     console.log("🔍 provider", chatHistory);
-    
+
     // 🔍 ЗАГРУЖАЕМ КОНТЕКСТ ИЗ ИСТОРИИ ЧАТА
     const contextLimit = 10; // Лимит контекста для мультичата
     const chatContext = chatHistory.getContext(contextLimit);
-    
+
     // Интеграция с реальными AI провайдерами
     let aiResponse = "";
     let success = true;
@@ -78,7 +78,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         success = false;
       } else {
         const aiSettings = await AISettings.findByUserId(userId);
-     
+
         let selectedModel = aiSettings?.selectedModels
           ? aiSettings.selectedModels[provider]
           : provider;
@@ -97,7 +97,9 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
-            ...(imageUrl && (provider === 'veo3' || provider === 'imagen') && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
+            ...(imageUrl &&
+              (provider === "veo3" || provider === "imagen") && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
+            numberOfImages: 1,
           },
           {
             timeout: 30000,
@@ -107,11 +109,24 @@ router.post("/:provider", requireApiKey, async (req, res) => {
           }
         );
 
+
+        console.log("🔍 aiResponseData", aiResponseData);
+
         if (aiResponseData.data?.success) {
-          aiResponse =
-            aiResponseData.data.content ||
+          let contentToSend;
+          if (
+            aiResponseData.data.provider === "imagen" &&
+            Array.isArray(aiResponseData.data.images) &&
+            aiResponseData.data.images.length > 0
+          ) {
+            contentToSend = aiResponseData.data.images.join("\n");
+          } else {
+            contentToSend = aiResponseData.data.content ||
             aiResponseData.data.response ||
-            "Ответ получен от AI провайдера";
+            aiResponseData.data?.message ||
+            "Неизвестная ошибка";
+          }
+          aiResponse = contentToSend;
         } else {
           aiResponse = `Ошибка от провайдера ${provider}: ${
             aiResponseData.data?.message || "Неизвестная ошибка"

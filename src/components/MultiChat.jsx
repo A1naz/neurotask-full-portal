@@ -584,7 +584,7 @@ const ProviderCard = React.forwardRef(({
               <span>Загрузка...</span>
             </div>
           ) : (
-            <div className="flex gap-2 items-center relative"> {/* Added relative positioning */}
+            <div className="flex gap-2 items-center relative"> {/* This div wraps input elements when not sending */}
               {(provider === 'veo3' || provider === 'imagen') && (
                 <>
                   <input
@@ -593,7 +593,7 @@ const ProviderCard = React.forwardRef(({
                     accept="image/*,video/*"
                     className="hidden"
                     onChange={handleImageSelect}
-                    disabled={balance < 1 || isLoading || isSending} // Disable if no tokens, global loading, or local sending
+                    disabled={balance < 1 || isLoading} // Disable if no tokens or global loading
                   />
                   <Button
                     size="sm"
@@ -602,7 +602,7 @@ const ProviderCard = React.forwardRef(({
                     className="px-3"
                     title="Загрузить изображение или видео"
                     ref={imageUploadButtonRef} // Привязываем ref к кнопке
-                    disabled={balance < 1 || isLoading || isSending} // Disable if no tokens, global loading, or local sending
+                    disabled={balance < 1 || isLoading} // Disable if no tokens or global loading
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -628,23 +628,16 @@ const ProviderCard = React.forwardRef(({
                 }}
                 className="min-h-[40px] resize-none text-sm flex-1" // Added flex-1
                 rows={1}
-                disabled={isLoading || isSending || balance < 1} // Disable if global loading, local sending, or no balance
+                disabled={isLoading || balance < 1} // Disable if global loading, or no balance
               />
               <Button
                 size="sm"
                 onClick={handleSend}
-                disabled={(!individualMessage.trim() && !selectedImageFile && !droppedFile) || isLoading || isUploadingImage || isSending || balance < 1} // Disable if global loading, upload, local sending, no content, or no balance
+                disabled={(!individualMessage.trim() && !selectedImageFile && !droppedFile) || isLoading || isUploadingImage || balance < 1} // Disable if global loading, upload, no content, or no balance
                 className="px-6"
               >
                 <Send className="h-4 w-4" /> {/* Always show send icon */}
               </Button>
-
-              {(isLoading || isSending) && ( // Show loading message as an overlay
-                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 dark:bg-black dark:bg-opacity-80 rounded-md z-10">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span>Обработка запроса...</span>
-                </div>
-              )}
             </div>
           )}
           

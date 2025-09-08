@@ -228,17 +228,32 @@ const ProviderCard = React.forwardRef(({
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Очищаем input file
     }
-    setDroppedFile(null); // Очищаем перетащенный файл
-    setDragDropError(''); // Очищаем ошибку перетаскивания
   };
 
   const handleSend = async () => {
-    if (individualMessage.trim() || selectedImageFile || droppedFile) {
+    if (individualMessage.trim() || selectedImageFile) {
       setIsSending(true); // Устанавливаем состояние отправки
       let imageUrlToUse = selectedImageUrl;
       let fileToUpload = selectedImageFile;
 
       try {
+        // Если выбран файл через "+", но URL ещё не получен, загружаем его перед отправкой
+        if (fileToUpload && (!imageUrlToUse || !/^https?:\/\//i.test(imageUrlToUse))) {
+          setIsUploadingImage(true);
+          try {
+            const uploadedUrl = await onImageUpload(provider, fileToUpload);
+            imageUrlToUse = uploadedUrl;
+          } catch (uploadErr) {
+            console.error("Ошибка при загрузке выбранного файла перед отправкой:", uploadErr);
+            setIsUploadingImage(false);
+            setDragDropError('Ошибка при загрузке файла. Попробуйте еще раз.');
+            setTimeout(() => setDragDropError(''), 3000);
+            return;
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }
+
         if (droppedFile) {
           fileToUpload = droppedFile;
           setIsUploadingImage(true); // Устанавливаем состояние загрузки
@@ -259,7 +274,6 @@ const ProviderCard = React.forwardRef(({
         await onSendMessage(provider, individualMessage.trim(), imageUrlToUse); // Передаем URL изображения
         setIndividualMessage(''); // Очищаем поле после отправки
         handleClearImage(); // Очищаем выбранное изображение
-        setDroppedFile(null); // Очищаем перетащенный файл
       } finally {
         setIsSending(false); // Сбрасываем состояние отправки в конце функции, независимо от успеха/ошибки
       }
@@ -423,51 +437,71 @@ const ProviderCard = React.forwardRef(({
               </div>
               <div className="space-y-1 overflow-y-auto flex-1 min-h-0">
                 {history.map((msg, index) => (
-                  <div key={index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
+                  <div key={msg._id || index} className={`p-1 rounded-lg ${msg.role === 'user' ? 'bg-blue-100 ml-2' : 'bg-green-100 mr-2'}`}>
                     <div className="flex items-start gap-2">
                       <span className="text-xs font-medium mt-1">
                         {msg.role === 'user' ? '👤' : '🤖'}
                       </span>
                       <div className="flex-1 min-w-0">
-                        {msg.imageUrl && msg.role === 'user' && (
-                          <div className="mb-2">
-                            <img src={msg.imageUrl} alt="User uploaded image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
-                            <Button
-                              variant="link"
-                              size="sm"
-                              onClick={() => window.open(msg.imageUrl, '_blank')}
-                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
-                            >
-                              Открыть оригинал
-                            </Button>
-                          </div>
-                        )}
-                        {msg.content.match(/\.(mp4|webm|ogg)(\?.*)?$/i) ? (
-                          <div className="mb-2">
-                            <video controls src={msg.content} className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
-                            <Button
-                              variant="link"
-                              size="sm"
-                              onClick={() => window.open(msg.content, '_blank')}
-                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
-                            >
-                              Открыть оригинал
-                            </Button>
-                          </div>
-                        ) : msg.content.match(/\.(jpeg|jpg|png|gif|webp|svg)(\?.*)?$/i) ? (
-                          <div className="mb-2">
-                            <img src={msg.content} alt="Generated image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
-                            <Button
-                              variant="link"
-                              size="sm"
-                              onClick={() => window.open(msg.content, '_blank')}
-                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
-                            >
-                              Открыть оригинал
-                            </Button>
-                          </div>
+                        {msg.role === 'user' && (() => {
+                          const tagMatch = (msg.content || '').match(/<IMAGE_URL:([^>]+)>/i);
+                          const imageMatch = (msg.content || '').match(/https?:\/\/\S+\.(?:jpeg|jpg|png|gif|webp|svg)(?:\?\S*)?/i);
+                          const userImageUrl = msg.imageUrl || (tagMatch ? tagMatch[1] : (imageMatch ? imageMatch[0] : null));
+                          return userImageUrl ? (
+                            <div className="mb-2">
+                              <img src={userImageUrl} alt="User uploaded image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => window.open(userImageUrl, '_blank')}
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              >
+                                Открыть оригинал
+                              </Button>
+                            </div>
+                          ) : null;
+                        })()}
+                        {(msg.role === 'user') ? (
+                          (() => {
+                            const tagMatch = (msg.content || '').match(/<IMAGE_URL:([^>]+)>/i);
+                            const imageMatch = (msg.content || '').match(/https?:\/\/\S+\.(?:jpeg|jpg|png|gif|webp|svg)(?:\?\S*)?/i);
+                            const urlToStrip = msg.imageUrl || (tagMatch ? tagMatch[1] : (imageMatch ? imageMatch[0] : ''));
+                            const textOnly = (msg.content || '')
+                              .replace(urlToStrip || '', '')
+                              .replace(/<IMAGE_URL:.*?>/gi, '')
+                              .trim();
+                            return textOnly ? (
+                              <p className="text-sm whitespace-pre-wrap break-words">{textOnly}</p>
+                            ) : null;
+                          })()
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                          msg.content.match(/\.(mp4|webm|ogg)(\?.*)?$/i) ? (
+                            <div className="mb-2">
+                              <video controls src={msg.content} className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => window.open(msg.content, '_blank')}
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              >
+                                Открыть оригинал
+                              </Button>
+                            </div>
+                          ) : msg.content.match(/\.(jpeg|jpg|png|gif|webp|svg)(\?.*)?$/i) ? (
+                            <div className="mb-2">
+                              <img src={msg.content} alt="Generated image" className="max-w-full h-auto rounded-md" style={{ width: '360px' }} />
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => window.open(msg.content, '_blank')}
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              >
+                                Открыть оригинал
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                          )
                         )}
                         <p className="text-xs text-gray-500 mt-1">
                           {new Date(msg.timestamp).toLocaleTimeString()}
@@ -620,8 +654,7 @@ const ProviderCard = React.forwardRef(({
                     !individualMessage.trim() &&
                     !selectedImageFile &&
                     e.relatedTarget !== fileInputRef.current &&
-                    e.relatedTarget !== imageUploadButtonRef.current &&
-                    !droppedFile // Добавляем проверку на droppedFile
+                    e.relatedTarget !== imageUploadButtonRef.current
                   ) {
                     setShowInputField(false);
                   }
@@ -633,22 +666,10 @@ const ProviderCard = React.forwardRef(({
               <Button
                 size="sm"
                 onClick={handleSend}
-                disabled={(!individualMessage.trim() && !selectedImageFile && !droppedFile) || isLoading || isUploadingImage || balance < 1} // Disable if global loading, upload, no content, or no balance
+                disabled={(!individualMessage.trim() && !selectedImageFile) || isLoading || isUploadingImage || balance < 1} // Disable if global loading, upload, no content, or no balance
                 className="px-6"
               >
                 <Send className="h-4 w-4" /> {/* Always show send icon */}
-              </Button>
-            </div>
-          )}
-          
-          {droppedFile && (
-            <div className="mt-2 p-2 border rounded-md flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {droppedFile.type.startsWith('image/') ? <Image className="h-5 w-5" /> : <Video className="h-5 w-5" />}
-                <span>{droppedFile.name}</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleClearDroppedFile}>
-                <X className="h-4 w-4" />
               </Button>
             </div>
           )}
@@ -821,6 +842,7 @@ const MultiChat = () => {
 
   const loadChatHistory = async (provider, chatIdToLoad) => {
     if (!csrfToken || !user?._id || !chatIdToLoad) return;
+    console.log(`[loadChatHistory] Attempting to load history for provider: ${provider}, chatId: ${chatIdToLoad}`);
     try {
       let url = `${API_BASE}/api/multi-chat/history/${provider}?chatId=${chatIdToLoad}`;
       const response = await fetch(url, {
@@ -958,6 +980,8 @@ const MultiChat = () => {
         
         // Use locally stored order if available
         const savedOrder = localStorage.getItem('multichat_selected_providers');
+        let providersToFetchHistory = []; // Новая переменная для хранения списка провайдеров для загрузки истории
+
         if (savedOrder) {
           try {
             const orderedProviders = JSON.parse(savedOrder);
@@ -967,23 +991,23 @@ const MultiChat = () => {
             const newProviders = allActiveProviders.filter(p => !validOrderedProviders.includes(p));
             const finalProviders = [...validOrderedProviders, ...newProviders];
             setSelectedProviders(finalProviders);
+            providersToFetchHistory = finalProviders; // Используем актуальный список
           } catch (e) {
             // Если парсинг не удался, возвращаемся ко всем активным провайдерам
             setSelectedProviders(allActiveProviders); // Инициализируем всеми активными провайдерами
+            providersToFetchHistory = allActiveProviders; // Используем актуальный список
           }
         } else {
           setSelectedProviders(allActiveProviders); // Инициализируем всеми активными провайдерами, если нет сохраненного порядка
+          providersToFetchHistory = allActiveProviders; // Используем актуальный список
         }
         
-        // После обновления selectedProviders (из localStorage или по умолчанию),
-        // фильтруем их по текущей выбранной категории для инициализации ответов.
-        const providersToInitialize = selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory);
-        
         const initialResponses = {};
-        // Инициализируем ответы только для текущих выбранных провайдеров
-        providersToInitialize.forEach(provider => {
+        // Инициализируем ответы и загружаем историю для всех выбранных провайдеров
+        providersToFetchHistory.forEach(provider => {
           initialResponses[provider] = { status: 'idle', content: '', error: '' };
           if (fetchedCurrentChatId) {
+            console.log(`[loadActiveProviders] Loading history for provider: ${provider}, chatId: ${fetchedCurrentChatId}`);
             loadChatHistory(provider, fetchedCurrentChatId);
           }
         });
@@ -1125,6 +1149,9 @@ const MultiChat = () => {
 
       if (response.ok) {
         const data = await response.json();
+        // После успешного ответа обновляем историю чата для конкретного провайдера
+        loadChatHistory(provider, currentChatId);
+        setTimeout(() => scrollToBottom(provider), 200);
         return { status: data.status, content: data.content, error: data.error, context: data.context, tokensDeducted: data.tokensDeducted, newBalance: data.newBalance };
       } else {
         const errorData = await response.json();
@@ -1605,6 +1632,7 @@ const MultiChat = () => {
 
       // Загружаем историю для каждого активного провайдера с новым chatId
       selectedProviders.forEach(provider => {
+        console.log(`[handleChatSelect] Loading history for provider: ${provider}, chatId: ${chatId}`);
         loadChatHistory(provider, chatId);
       });
 
@@ -2144,7 +2172,7 @@ const MultiChat = () => {
                           onSendMessage={sendToProvider} // Передаем функцию
                           onImageUpload={handleProviderImageUpload} // Передаем функцию
                           balance={balance} // Передаем баланс
-                          isLoading={loading} // Передаем глобальный loading
+                    
                         />
                       )) : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
                         <SortableProviderCard 
@@ -2243,14 +2271,16 @@ const MultiChat = () => {
             </div>
           )}
           
-          <div className="mt-0.5 text-xs text-gray-500">
-            Нажмите Enter для отправки, Shift+Enter для новой строки
-            {balance < 1 && (
-              <span className="ml-2 text-red-500 font-medium">
-                ⚠️ Недостаточно токенов для отправки сообщения
-              </span>
-            )}
-          </div>
+          {selectedCategory !== 'mix' && (
+            <div className="mt-0.5 text-xs text-gray-500">
+              Нажмите Enter для отправки, Shift+Enter для новой строки
+              {balance < 1 && (
+                <span className="ml-2 text-red-500 font-medium">
+                  ⚠️ Недостаточно токенов для отправки сообщения
+                </span>
+              )}
+            </div>
+          )}
                                          </div>
            </Card>
      </div>

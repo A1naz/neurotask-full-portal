@@ -47,9 +47,11 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       chatId,
       defaultChatTitle
     );
-    // Добавляем сообщение пользователя
-    await chatHistory.addMessage("user", message, imageUrl); // Передаем imageUrl
-    console.log("🔍 provider", chatHistory);
+    // Добавляем сообщение пользователя: сохраняем текст и ссылку на изображение в content через тег
+    const contentToSave = imageUrl ? `${message} <IMAGE_URL:${imageUrl}>` : message;
+    console.log("🔍 contentToSave", contentToSave);
+    console.log("🔍 imageUrl", imageUrl);
+    await chatHistory.addMessage("user", contentToSave, imageUrl); // Передаем imageUrl
 
     // 🔍 ЗАГРУЖАЕМ КОНТЕКСТ ИЗ ИСТОРИИ ЧАТА
     const contextLimit = 10; // Лимит контекста для мультичата
@@ -102,15 +104,12 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             numberOfImages: 1,
           },
           {
-            timeout: 30000,
+            timeout: 200000,
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-
-
-        console.log("🔍 aiResponseData", aiResponseData);
 
         if (aiResponseData.data?.success) {
           let contentToSend;

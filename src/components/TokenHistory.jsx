@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import {
 } from 'recharts';
 
 const TokenHistory = () => {
+  const location = useLocation();
   const { API_BASE, csrfToken } = useAuth();
   const { balance, fetchBalance } = useTokenBalance(); // Get balance and fetchBalance from context
   const [history, setHistory] = useState([]);
@@ -32,6 +34,7 @@ const TokenHistory = () => {
   const [topUpAmount, setTopUpAmount] = useState('');
   // const [currentBalance, setCurrentBalance] = useState(0); // Removed local state
   const [showTopUpForm, setShowTopUpForm] = useState(false);
+  const topUpInputRef = useRef(null);
   const [chartData, setChartData] = useState([]);
   const [stats, setStats] = useState({
     totalTopUps: 0,
@@ -47,6 +50,21 @@ const TokenHistory = () => {
     endDate: '',
     type: 'all' // all, top_up, spend
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'topup') {
+      setShowTopUpForm(true);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (showTopUpForm) {
+      setTimeout(() => {
+        topUpInputRef.current?.focus();
+      }, 100);
+    }
+  }, [showTopUpForm]);
 
   useEffect(() => {
     loadHistory();
@@ -341,15 +359,32 @@ const TokenHistory = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="amount">Сумма пополнения</Label>
+              <Label htmlFor="amount"></Label>
               <Input
+                ref={topUpInputRef}
                 id="amount"
                 type="number"
+                className="-mt-3"
                 value={topUpAmount}
                 onChange={(e) => setTopUpAmount(e.target.value)}
-                placeholder="Введите сумму"
+                placeholder="Введите количество токенов"
                 min="1"
               />
+              <p className="text-sm text-gray-500 mt-2">
+                Стоимость токена 1р. К оплате: {topUpAmount ? parseInt(topUpAmount, 10) : 0}₽
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {[500, 1500, 2500, 5000].map((amount) => (
+                <Button
+                  key={amount}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTopUpAmount(amount.toString())}
+                >
+                  {amount.toLocaleString('ru-RU')}
+                </Button>
+              ))}
             </div>
             <div className="flex gap-2">
               <Button onClick={handleTopUp} disabled={loading}>

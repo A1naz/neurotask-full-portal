@@ -53,7 +53,7 @@ const ProfileDropdown = ({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => navigate('/assistant/token-history')}
+              onClick={() => navigate('/assistant/token-history?action=topup')}
               className="h-6 w-6 p-0 hover:bg-blue-100 rounded-full"
               title="Пополнить баланс"
             >

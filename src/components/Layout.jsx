@@ -337,35 +337,32 @@ const Layout = ({ children }) => {
       )}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between h-16 px-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-            {!isSidebarCollapsed && (
-              <div 
-                className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => navigate('/assistant')}
-              >
-                <img 
-                  src="/neurotask-logo.jpg" 
-                  alt="Neurotask Logo" 
-                  className="h-10 w-10 rounded-lg object-cover mr-3"
-                />
-                <div>
-                  <h1 className="text-lg font-bold text-gray-900">Neurotask</h1>
-                  <p className="text-xs text-gray-600">AI Assistant</p>
-                </div>
-              </div>
+          <div
+            className={cn(
+              'flex h-16 shrink-0 items-center border-b bg-gradient-to-r from-blue-50 to-indigo-50 px-4',
+              isSidebarCollapsed ? 'justify-center' : 'justify-between'
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden lg:flex"
-              onClick={() => updateSidebarState(!isSidebarCollapsed)}
+          >
+            <div
+              className="flex cursor-pointer items-center transition-opacity hover:opacity-80"
+              onClick={() => navigate('/assistant')}
             >
-              {isSidebarCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
-            </Button>
+              <img
+                src="/neurotask-logo.jpg"
+                alt="Neurotask Logo"
+                className="h-10 w-10 rounded-lg object-cover"
+              />
+              {!isSidebarCollapsed && (
+                <div className="ml-3">
+                  <h1 className="text-lg font-bold text-gray-900">Neurotask</h1>
+                  <p className="text-xs text-gray-600">AI Agents</p>
+                </div>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden hover:bg-blue-50"
+              className="lg:hidden"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-5 w-5" />
@@ -377,39 +374,71 @@ const Layout = ({ children }) => {
             {renderMenuItems()}
           </nav>
 
-          {/* User Profile Section - Fixed at bottom */}
-          <div className="border-t bg-gray-50 p-4 mt-auto sticky bottom-0 z-10">
-            <ProfileDropdown
-              direction="up"
-              user={user}
-              tokenBalance={tokenBalance}
-              profileMenuItems={profileMenuItems}
-              isLoading={isLoadingMenu}
-              error={menuError}
-              onLogout={handleLogout}
-              trigger={
-                <Button variant="ghost" className="w-full justify-start p-3 hover:bg-white transition-colors group">
-                  <div className="flex items-center w-full">
-                    <div className="flex-shrink-0">
-                      <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
-                        <User className="h-5 w-5 text-white" />
+          {/* User Profile Section & Collapse button */}
+          <div className="border-t">
+            <div
+              className={cn(
+                'flex',
+                isSidebarCollapsed
+                  ? 'flex-col items-center space-y-1 py-2'
+                  : 'items-center bg-gray-50 p-4'
+              )}
+            >
+              <div className={cn(!isSidebarCollapsed && 'order-1 flex-1')}>
+                <ProfileDropdown
+                  direction="up"
+                  user={user}
+                  tokenBalance={tokenBalance}
+                  profileMenuItems={profileMenuItems}
+                  isLoading={isLoadingMenu}
+                  error={menuError}
+                  onLogout={handleLogout}
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        'w-full justify-start p-3 hover:bg-white transition-colors group',
+                        isSidebarCollapsed && 'p-2 justify-center'
+                      )}
+                    >
+                      <div className="flex items-center w-full">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                            <User className="h-5 w-5 text-white" />
+                          </div>
+                        </div>
+                        {!isSidebarCollapsed && (
+                          <div className="ml-3 text-left flex-1 max-w-28">
+                            <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                              {user?.username}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user?.email}
+                            </p>
+                          </div>
+                        )}
+                        {!isSidebarCollapsed && (
+                          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    {!isSidebarCollapsed && (
-                      <div className="ml-3 text-left flex-1">
-                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">{user?.username}</p>
-                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                      </div>
-                    )}
-                    {!isSidebarCollapsed && (
-                      <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      </div>
-                    )}
-                  </div>
+                    </Button>
+                  }
+                />
+              </div>
+
+              <div className={cn(!isSidebarCollapsed && 'order-2')}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden lg:flex"
+                  onClick={() => updateSidebarState(!isSidebarCollapsed)}
+                >
+                  {isSidebarCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
                 </Button>
-              }
-            />
+              </div>
+            </div>
           </div>
         </div>
       </div>

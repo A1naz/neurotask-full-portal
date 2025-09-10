@@ -137,7 +137,7 @@ const API_BASE = (() => {
     }));
   };
 
-  const fetchAllowedRoutes = async () => {
+  const fetchAllowedRoutes = async (user) => {
     // Ensure this function is only called if a user is present
     if (!user) return [];
 
@@ -272,7 +272,8 @@ const API_BASE = (() => {
         setIsAuthenticated(true);
         // Get CSRF token after successful authentication
         await getCsrfToken();
-        await fetchAllowedRoutes(); // Возвращаем загрузку маршрутов
+        // No longer returning, just await
+        await fetchAllowedRoutes(userData.user); 
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -300,13 +301,14 @@ const API_BASE = (() => {
       const data = await response.json();
 
       if (response.ok) {
-        setUser(data.user);
+        const loggedInUser = data.user;
+        setUser(loggedInUser);
         setIsAuthenticated(true);
         debugCookies(); // Debug cookies after successful login
         
         // Get CSRF token after successful login
         await getCsrfToken();
-        const routes = await fetchAllowedRoutes(); // Возвращаем загрузку маршрутов
+        const routes = await fetchAllowedRoutes(loggedInUser); 
         
         return { success: true, allowedRoutes: routes }; // Возвращаем маршруты для редиректа
       } else if (response.status === 403 && data.needsVerification) {
@@ -366,9 +368,11 @@ const API_BASE = (() => {
       if (response.ok) {
         // Автоматически входим в систему после успешной верификации
         if (data.isAuthenticated && data.user) {
-          setUser(data.user);
+          const verifiedUser = data.user;
+          setUser(verifiedUser);
           setIsAuthenticated(true);
           setTempUserData(null); // Очищаем временные данные
+          await fetchAllowedRoutes(verifiedUser);
         }
         
         // Get CSRF token after successful email verification
@@ -472,6 +476,27 @@ const API_BASE = (() => {
     }
   };
 
+  // Re-fetch user data when isAuthenticated becomes true
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (isAuthenticated && user) {
+        try {
+          const response = await fetch(`${API_BASE}/api/auth/me`, {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data.user);
+          }
+        } catch (error) {
+          console.error("Failed to refresh user data:", error);
+        }
+      }
+    };
+    refreshUserData();
+  }, [isAuthenticated]);
+
+
   const value = {
     user,
     loading,
@@ -501,6 +526,7 @@ const API_BASE = (() => {
     profileMenuItems,
     isLoadingMenu,
     menuError,
+    fetchAllowedRoutes // Expose fetchAllowedRoutes
   };
 
   // Fetch menu items when user changes or on initial load if not already loaded

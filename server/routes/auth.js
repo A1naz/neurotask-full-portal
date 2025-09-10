@@ -409,8 +409,8 @@ router.get('/me', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     
-    // Получаем пользователя
-    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}`, {
+    // Получаем пользователя с информацией о тарифе
+    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}?populate=tariffId`, {
       headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
     });
 
@@ -443,7 +443,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     const { firstName, lastName, username, email } = req.body;
     
     // Получаем пользователя
-    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}`, {
+    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}?populate=tariffId`, {
       headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
     });
 
@@ -494,7 +494,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
     }
 
     // Получаем пользователя
-    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}`, {
+    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}?populate=tariffId`, {
       headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
     });
 
@@ -557,7 +557,7 @@ router.put('/password', requireAuth, async (req, res) => {
     }
 
     // Получаем пользователя
-    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}`, {
+    const userResponse = await axios.get(`${DATABASE_SERVICE_URL}/api/users/${userId}?populate=tariffId`, {
       headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
     });
 

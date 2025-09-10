@@ -115,6 +115,11 @@ const userSchema = new mongoose.Schema({
     enum: ['owner', 'admin', 'manager', 'member', 'guest'],
     default: 'member'
   },
+  tariffId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'TariffPlan',
+    default: null,
+  },
   // Поля для командной работы
   position: { type: String }, // Должность
   permissions: { type: [String], default: [] }, // Права доступа к разделам
@@ -139,6 +144,7 @@ userSchema.index({ isTeamOwner: 1 });
 userSchema.index({ teamRole: 1 });
 userSchema.index({ teamId: 1, teamRole: 1 });
 userSchema.index({ resetPasswordToken: 1 }); // New index for password reset token
+userSchema.index({ tariffId: 1 });
 
 // Виртуальное поле для полного имени
 userSchema.virtual('fullName').get(function() {

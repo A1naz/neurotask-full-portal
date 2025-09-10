@@ -18,6 +18,8 @@ const aiSettingsRoutes = require('./routes/ai-settings');
 const projectSettingsRoutes = require('./routes/project-settings');
 const selectedProvidersRoutes = require('./routes/selected-providers');
 const providerOrderRoutes = require('./routes/provider-order');
+const TariffPlan = require('./models/TariffPlan');
+
 
 const app = express();
 const PORT = process.env.DATABASE_SERVICE_PORT || 3012;

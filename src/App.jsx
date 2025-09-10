@@ -33,6 +33,7 @@ import AISettings from '@/components/AISettings';
           import Generations from '@/components/Generations';
           import Tasks from '@/components/Tasks';
           import AccessDenied from '@/components/AccessDenied';
+          import Plans from '@/components/Plans';
           import { ToastContainer } from 'react-toastify';
           import 'react-toastify/dist/ReactToastify.css';
 import { DashboardProvider } from '@/contexts/DashboardContext'; // Import DashboardProvider
@@ -190,6 +191,17 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <MultiChat />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/assistant/plans"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Plans />
                       </Layout>
                     </ProtectedRoute>
                   }

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   LogOut,
   User,
@@ -36,19 +36,20 @@ import {
   Settings,
   ChevronLeft,
   ChevronsLeft,
-  ChevronsRight
-} from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton'; // Импортируем Skeleton
+  ChevronsRight,
+  Info,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton"; // Импортируем Skeleton
 import {
   CustomDropdown,
   DropdownItem,
   DropdownSeparator,
   DropdownLabel,
-} from '@/components/ui/custom-dropdown';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTokenBalance } from '@/contexts/TokenBalanceContext';
+} from "@/components/ui/custom-dropdown";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTokenBalance } from "@/contexts/TokenBalanceContext";
 import { cn } from "@/lib/utils";
-import ProfileDropdown from './ProfileDropdown'; // Импортируем новый компонент
+import ProfileDropdown from "./ProfileDropdown"; // Импортируем новый компонент
 
 // Маппинг имен иконок на компоненты иконок
 const iconComponents = {
@@ -74,7 +75,7 @@ const iconComponents = {
   Landmark,
   History,
   Cpu,
-  Settings
+  Settings,
 };
 
 const Layout = ({ children }) => {
@@ -84,7 +85,7 @@ const Layout = ({ children }) => {
   // const [profileMenuItems, setProfileMenuItems] = useState([]);
   // const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   // const [menuError, setMenuError] = useState(null);
-  
+
   const {
     user,
     logout,
@@ -100,7 +101,7 @@ const Layout = ({ children }) => {
     sidebarMenuItems, // Get menu items from AuthContext
     profileMenuItems, // Get profile menu items from AuthContext
     isLoadingMenu, // Get loading state from AuthContext
-    menuError // Get error state from AuthContext
+    menuError, // Get error state from AuthContext
   } = useAuth();
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
@@ -110,21 +111,21 @@ const Layout = ({ children }) => {
   // useEffect(() => {
   //   const fetchMenuItems = async () => {
   //     if (!user) return;
-      
+
   //     setIsLoadingMenu(true);
   //     setMenuError(null);
-      
+
   //     try {
   //       const response = await fetch(`${API_BASE}/api/menu`, {
   //         credentials: 'include',
   //       });
-        
+
   //       if (!response.ok) {
   //         throw new Error('Не удалось загрузить конфигурацию меню.');
   //       }
-        
+
   //       const data = await response.json();
-        
+
   //       if (data.success) {
   //         // Функция для добавления иконок к пунктам меню
   //         const mapIcons = (items) => {
@@ -134,7 +135,7 @@ const Layout = ({ children }) => {
   //             children: item.children ? mapIcons(item.children) : [],
   //           }));
   //         };
-          
+
   //         setSidebarMenuItems(mapIcons(data.sidebarMenuItems));
   //         setProfileMenuItems(mapIcons(data.profileMenuItems));
 
@@ -178,15 +179,17 @@ const Layout = ({ children }) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const isActiveRoute = (path) => {
-    if (path === '/assistant') {
+    if (path === "/assistant") {
       // Для кнопки "Ассистент" активна только если мы точно на /assistant, а не на /assistant/multi-chat
       return location.pathname === path;
     }
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   const renderMenuItems = () => {
@@ -218,11 +221,12 @@ const Layout = ({ children }) => {
       );
     }
 
-    return sidebarMenuItems.map((item) => { // Используем sidebarMenuItems
+    return sidebarMenuItems.map((item) => {
+      // Используем sidebarMenuItems
       const Icon = item.icon;
       const hasChildren = item.children && item.children.length > 0;
       const isActive = isActiveRoute(item.path);
-      
+
       return (
         <div key={item.id}>
           {hasChildren ? (
@@ -234,17 +238,24 @@ const Layout = ({ children }) => {
                   variant={isActive ? "default" : "ghost"}
                   className={cn(
                     "flex-1 justify-start",
-                    isActive 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'hover:bg-blue-50',
+                    isActive
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "hover:bg-blue-50",
                     isSidebarCollapsed && "px-2"
                   )}
                   onClick={() => navigate(item.path)}
                 >
-                  {Icon && <Icon className={cn("h-5 w-5", isSidebarCollapsed ? "mx-auto" : "mr-3")} />}
+                  {Icon && (
+                    <Icon
+                      className={cn(
+                        "h-5 w-5",
+                        isSidebarCollapsed ? "mx-auto" : "mr-3"
+                      )}
+                    />
+                  )}
                   {!isSidebarCollapsed && item.label}
                 </Button>
-                
+
                 {/* Кнопка разворачивания/сворачивания */}
                 {!isSidebarCollapsed && (
                   <Button
@@ -252,14 +263,22 @@ const Layout = ({ children }) => {
                     size="sm"
                     className="h-8 w-8 p-0 hover:bg-blue-50"
                     onClick={() => {
-                      if (item.id === 'agents') {
-                        updateInterfaceSettings({ agentsExpanded: !agentsExpanded });
-                      } else if (item.id === 'generations') {
-                        updateInterfaceSettings({ generationsExpanded: !generationsExpanded });
+                      if (item.id === "agents") {
+                        updateInterfaceSettings({
+                          agentsExpanded: !agentsExpanded,
+                        });
+                      } else if (item.id === "generations") {
+                        updateInterfaceSettings({
+                          generationsExpanded: !generationsExpanded,
+                        });
                       }
                     }}
                   >
-                    {(item.id === 'agents' ? agentsExpanded : generationsExpanded) ? (
+                    {(
+                      item.id === "agents"
+                        ? agentsExpanded
+                        : generationsExpanded
+                    ) ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronRight className="h-4 w-4" />
@@ -267,35 +286,44 @@ const Layout = ({ children }) => {
                   </Button>
                 )}
               </div>
-              
+
               {/* Render children if expanded */}
-              {hasChildren && ((item.id === 'agents' && agentsExpanded) || (item.id === 'generations' && generationsExpanded)) && (
-                <div className="ml-4 space-y-1 mb-2">
-                  {item.children.map((child) => {
-                    const ChildIcon = child.icon;
-                    if (!ChildIcon) return null; // Добавим проверку
-                    const isChildActive = isActiveRoute(child.path);
-                    
-                    return (
-                      <Button
-                        key={child.id}
-                        variant={isChildActive ? "default" : "ghost"}
-                        className={cn(
-                          "w-full justify-start text-sm",
-                          isChildActive 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                            : 'hover:bg-blue-50',
-                          isSidebarCollapsed && "px-2"
-                        )}
-                        onClick={() => navigate(child.path)}
-                      >
-                        {ChildIcon && <ChildIcon className={cn("h-4 w-4", isSidebarCollapsed ? "mx-auto" : "mr-3")} />}
-                        {!isSidebarCollapsed && child.label}
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
+              {hasChildren &&
+                ((item.id === "agents" && agentsExpanded) ||
+                  (item.id === "generations" && generationsExpanded)) && (
+                  <div className="ml-4 space-y-1 mb-2">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      if (!ChildIcon) return null; // Добавим проверку
+                      const isChildActive = isActiveRoute(child.path);
+
+                      return (
+                        <Button
+                          key={child.id}
+                          variant={isChildActive ? "default" : "ghost"}
+                          className={cn(
+                            "w-full justify-start text-sm",
+                            isChildActive
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "hover:bg-blue-50",
+                            isSidebarCollapsed && "px-2"
+                          )}
+                          onClick={() => navigate(child.path)}
+                        >
+                          {ChildIcon && (
+                            <ChildIcon
+                              className={cn(
+                                "h-4 w-4",
+                                isSidebarCollapsed ? "mx-auto" : "mr-3"
+                              )}
+                            />
+                          )}
+                          {!isSidebarCollapsed && child.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
             </div>
           ) : (
             // Обычный элемент без дочерних элементов
@@ -303,49 +331,58 @@ const Layout = ({ children }) => {
               variant={isActive ? "default" : "ghost"}
               className={cn(
                 "w-full justify-start mb-2",
-                isActive 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'hover:bg-blue-50',
+                isActive
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "hover:bg-blue-50",
                 isSidebarCollapsed && "px-2"
               )}
               onClick={() => navigate(item.path)}
             >
-              {Icon && <Icon className={cn("h-5 w-5", isSidebarCollapsed ? "mx-auto" : "mr-3")} />}
+              {Icon && (
+                <Icon
+                  className={cn(
+                    "h-5 w-5",
+                    isSidebarCollapsed ? "mx-auto" : "mr-3"
+                  )}
+                />
+              )}
               {!isSidebarCollapsed && item.label}
             </Button>
           )}
         </div>
       );
     });
-  }
+  };
 
   return (
     <div className="h-screen bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
-        sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full',
-        isSidebarCollapsed ? 'w-20' : 'w-64'
-      )}>
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+          sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full",
+          isSidebarCollapsed ? "w-20" : "w-64"
+        )}
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div
             className={cn(
-              'flex h-16 shrink-0 items-center border-b bg-gradient-to-r from-blue-50 to-indigo-50 px-4',
-              isSidebarCollapsed ? 'justify-center' : 'justify-between'
+              "flex h-16 shrink-0 items-center border-b bg-gradient-to-r from-blue-50 to-indigo-50 px-4",
+              isSidebarCollapsed ? "justify-center" : "justify-between"
             )}
           >
             <div
               className="flex cursor-pointer items-center transition-opacity hover:opacity-80"
-              onClick={() => navigate('/assistant')}
+              onClick={() => navigate("/assistant")}
             >
               <img
                 src="/neurotask-logo.jpg"
@@ -378,13 +415,13 @@ const Layout = ({ children }) => {
           <div className="border-t">
             <div
               className={cn(
-                'flex',
+                "flex",
                 isSidebarCollapsed
-                  ? 'flex-col items-center space-y-1 py-2'
-                  : 'items-center bg-gray-50 p-4'
+                  ? "flex-col items-center space-y-1 py-2"
+                  : "items-center bg-gray-50 p-4"
               )}
             >
-              <div className={cn(!isSidebarCollapsed && 'order-1 flex-1')}>
+              <div className={cn(!isSidebarCollapsed && "order-1 flex-1")}>
                 <ProfileDropdown
                   direction="up"
                   user={user}
@@ -397,8 +434,8 @@ const Layout = ({ children }) => {
                     <Button
                       variant="ghost"
                       className={cn(
-                        'w-full justify-start p-3 hover:bg-white transition-colors group',
-                        isSidebarCollapsed && 'p-2 justify-center'
+                        "w-full justify-start p-3 hover:bg-white transition-colors group",
+                        isSidebarCollapsed && "p-2 justify-center"
                       )}
                     >
                       <div className="flex items-center w-full">
@@ -428,7 +465,7 @@ const Layout = ({ children }) => {
                 />
               </div>
 
-              <div className={cn(!isSidebarCollapsed && 'order-2')}>
+              <div className={cn(!isSidebarCollapsed && "order-2")}>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -455,23 +492,24 @@ const Layout = ({ children }) => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          
-          <div className="flex-1">
-          </div>
-          
+
+          <div className="flex-1"></div>
+
           {/* Quick Actions */}
           <div className="hidden lg:flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/assistant/token-history')}
+              onClick={() => navigate("/assistant/token-history")}
               className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-200 transition-colors"
             >
               <Wallet className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-gray-700">{tokenBalance.toLocaleString()}</span>
+              <span className="text-sm font-medium text-gray-700">
+                {tokenBalance.toLocaleString()}
+              </span>
               <span className="text-xs text-gray-500">токенов</span>
             </Button>
-            
+
             <ProfileDropdown
               direction="down"
               user={user}
@@ -497,6 +535,29 @@ const Layout = ({ children }) => {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
+          {/* Upgrade Plan Notification Bar */}
+          {user && user.isTeamOwner && (!user.tariffId || user.tariffId.name === 'Бесплатно') && (
+            <div className="px-4 py-3">
+              <div className="flex items-center text-sm text-gray-600">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <div className="mx-4 flex-shrink-0">
+                  <div className="text-center border border-gray-200 rounded-lg shadow-sm bg-white px-4 py-2">
+                    <div className="flex items-center justify-center">
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-purple-600 hover:text-purple-700 font-semibold text-xs"
+                        onClick={() => navigate("/assistant/plans")}
+                      >
+                        Перейти на Plus
+                      </Button>
+                      <Info className="h-4 w-4 ml-1.5 text-gray-500" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+            </div>
+          )}
           {children}
         </main>
       </div>
@@ -504,4 +565,4 @@ const Layout = ({ children }) => {
   );
 };
 
-export default Layout; 
+export default Layout;

@@ -132,6 +132,7 @@ router.get("/", requireApiKey, async (req, res) => {
 router.get("/:userId", requireApiKey, async (req, res) => {
   try {
     const { userId } = req.params;
+    const { populate } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({
@@ -140,7 +141,14 @@ router.get("/:userId", requireApiKey, async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId).select("-password");
+    let query = User.findById(userId).select("-password");
+
+    if (populate) {
+      const fields = populate.split(',').join(' ');
+      query = query.populate(fields);
+    }
+
+    const user = await query.exec();
 
     if (!user) {
       return res.status(404).json({

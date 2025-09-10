@@ -35,9 +35,12 @@ const PasswordReset = () => {
       });
 
       if (response.data.success) {
-        setUserId(response.data.userId); // Assuming backend sends back userId for subsequent steps
-        setStep(2);
         setSuccess(response.data.message);
+        // Переходим к следующему шагу, только если сервер вернул userId
+        if (response.data.userId) {
+          setUserId(response.data.userId); 
+          setStep(2);
+        }
       } else {
         setError(response.data.message || 'Ошибка при запросе сброса пароля.');
       }

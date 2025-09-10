@@ -4,7 +4,6 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { requireApiKey } = require('../middleware/auth');
 const crypto = require('crypto'); // Added for verification code generation
-const { sendPasswordResetEmail } = require('../../server/utils/emailService'); // Import email service
 
 // ===== AUTHENTICATION ENDPOINTS =====
 
@@ -140,10 +139,17 @@ router.post('/request-password-reset', requireApiKey, async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 час
     await user.save();
 
-    // Отправляем email с кодом сброса пароля
-    await sendPasswordResetEmail(user.email, user.username, resetCode);
+    // Отправляем email с кодом сброса пароля - ЭТО БУДЕТ ПЕРЕМЕЩЕНО В SERVER
+    // await sendPasswordResetEmail(user.email, user.username, resetCode);
 
-    res.json({ success: true, message: 'Код подтверждения отправлен на ваш email.', userId: user._id });
+    res.json({ 
+      success: true, 
+      message: 'Код подтверждения сгенерирован.', 
+      userId: user._id,
+      email: user.email,
+      username: user.username,
+      resetCode: resetCode
+    });
   } catch (error) {
     console.error('Database Service - Request password reset error:', error);
     res.status(500).json({ error: 'Internal Server Error', message: 'Ошибка при запросе сброса пароля' });

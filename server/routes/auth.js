@@ -15,7 +15,7 @@ const {
 } = utils;
 
 // Импортируем email сервисы
-const { sendVerificationEmail, resendVerificationEmail } = require('../utils/emailService');
+const { sendVerificationEmail, resendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
 
 // Регистрация пользователя
 router.post('/register', async (req, res) => {
@@ -609,13 +609,54 @@ router.put('/password', requireAuth, async (req, res) => {
 // Прокси-эндпоинт для запроса сброса пароля
 router.post('/request-password-reset', async (req, res) => {
   try {
+    // 1. Запрашиваем у database-service создание токена
     const response = await axios.post(`${DATABASE_SERVICE_URL}/api/auth/request-password-reset`, req.body, {
       headers: { 'x-api-key': DATABASE_SERVICE_API_KEY }
     });
-    res.status(response.status).json(response.data);
+
+    if (response.data.success) {
+      const { email, username, resetCode, userId } = response.data;
+
+      // Только если database-service действительно сгенерировал код (т.е. пользователь найден)
+      if (userId && resetCode) {
+        try {
+          await sendPasswordResetEmail(email, username, resetCode);
+          
+          // Отправляем клиенту успешный ответ с userId
+          return res.status(response.status).json({
+            success: true,
+            message: 'Код подтверждения отправлен на ваш email.',
+            userId: userId
+          });
+        } catch (emailError) {
+          console.error('Server - Failed to send password reset email:', emailError);
+          // В случае ошибки отправки email, все равно сообщаем об успехе,
+          // чтобы не раскрывать информацию о существовании пользователя.
+          // Ошибку логируем для внутренней диагностики.
+          return res.status(200).json({
+            success: true,
+            message: 'Если пользователь с таким email существует, на него будет отправлен код подтверждения.',
+            userId: userId // Все равно возвращаем userId, чтобы клиент мог повторить попытку
+          });
+        }
+      } else {
+        // Пользователь не найден, просто проксируем ответ от database-service
+        // (в нем нет userId)
+        return res.status(response.status).json(response.data);
+      }
+    } else {
+       // Если database-service вернул ошибку, проксируем ее
+       return res.status(response.status).json(response.data);
+    }
+
   } catch (error) {
     console.error('Server - Proxy request-password-reset error:', error);
-    res.status(error.response?.status || 500).json(error.response?.data || { success: false, message: 'Ошибка проксирования запроса сброса пароля' });
+    // В случае ошибки (например, database-service недоступен), 
+    // отправляем общий ответ, чтобы не раскрывать детали.
+    res.status(200).json({
+        success: true,
+        message: 'Если пользователь с таким email существует, на него будет отправлен код подтверждения.'
+    });
   }
 });
 

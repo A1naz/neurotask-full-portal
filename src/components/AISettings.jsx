@@ -211,11 +211,11 @@ const AISettings = () => {
     },
     {
       key: 'dalle',
-      name: 'DALL-E 3',
+      name: 'DALL-E',
       description: 'Создание реалистичных изображений',
       icon: '🖼️',
       color: 'bg-blue-100 text-blue-800',
-      isDisabled: true
+      isDisabled: false
     },
     {
       key: 'stable-diffusion',

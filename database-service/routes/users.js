@@ -290,7 +290,7 @@ router.post("/:userId/balance", requireApiKey, async (req, res) => {
 router.get("/:userId/transactions", requireApiKey, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { page = 1, limit = 20, type } = req.query;
+    const { page = 1, limit = 20, type, period, startDate, endDate } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({
@@ -301,6 +301,59 @@ router.get("/:userId/transactions", requireApiKey, async (req, res) => {
 
     const query = { userId };
     if (type) query.type = type;
+    
+    // Фильтрация по периоду
+    if (period && period !== 'all') {
+      let startDateValue;
+      let endDateValue;
+
+      switch (period) {
+        case 'today':
+          startDateValue = new Date();
+          startDateValue.setHours(0, 0, 0, 0);
+          query.createdAt = { $gte: startDateValue };
+          break;
+        case 'yesterday':
+          startDateValue = new Date();
+          startDateValue.setDate(startDateValue.getDate() - 1);
+          startDateValue.setHours(0, 0, 0, 0);
+          
+          endDateValue = new Date();
+          endDateValue.setDate(endDateValue.getDate() - 1);
+          endDateValue.setHours(23, 59, 59, 999);
+          
+          query.createdAt = { $gte: startDateValue, $lte: endDateValue };
+          break;
+        case '3days':
+          startDateValue = new Date();
+          startDateValue.setDate(startDateValue.getDate() - 3);
+          query.createdAt = { $gte: startDateValue };
+          break;
+        case '7days':
+          startDateValue = new Date();
+          startDateValue.setDate(startDateValue.getDate() - 7);
+          query.createdAt = { $gte: startDateValue };
+          break;
+        case '30days':
+          startDateValue = new Date();
+          startDateValue.setDate(startDateValue.getDate() - 30);
+          query.createdAt = { $gte: startDateValue };
+          break;
+        case 'custom':
+          if (startDate) {
+            startDateValue = new Date(startDate);
+            startDateValue.setHours(0, 0, 0, 0);
+            query.createdAt = { ...query.createdAt, $gte: startDateValue };
+          }
+          if (endDate) {
+            endDateValue = new Date(endDate);
+            endDateValue.setHours(23, 59, 59, 999);
+            query.createdAt = { ...query.createdAt, $lte: endDateValue };
+          }
+          break;
+      }
+    }
+
 
     const transactions = await TokenTransaction.find(query)
       .sort({ createdAt: -1 })

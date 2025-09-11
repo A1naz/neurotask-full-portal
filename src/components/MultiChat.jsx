@@ -53,13 +53,21 @@ import {
   ChevronRight,
   Video,
   Image,
-  Music
+  Music,
+  MoreVertical,
+  Edit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { aiModelsConfig } from '@/config/ai-models'; // Import aiModelsConfig
 import ProviderCard from '@/components/MultiChat/ProviderCard';
 import SortableProviderCard from '@/components/MultiChat/SortableProviderCard';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const MultiChat = () => {
   const { API_BASE, csrfToken, user } = useAuth();
@@ -128,6 +136,8 @@ const MultiChat = () => {
   const [userChatHistories, setUserChatHistories] = useState([]); // Новое состояние для истории чатов пользователя
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
   const [isFirstMessage, setIsFirstMessage] = useState(true); // Состояние для отслеживания первого сообщения в новом чате
+  const [editingChat, setEditingChat] = useState(null); // Состояние для редактирования чата
+  const [newChatTitle, setNewChatTitle] = useState(""); // Состояние для нового названия чата
 
   const [providerImageFiles, setProviderImageFiles] = useState({}); // Новое состояние для файлов изображений
 
@@ -992,6 +1002,59 @@ const MultiChat = () => {
     }
   };
 
+  const handleRenameChat = async () => {
+    if (!editingChat || !newChatTitle.trim()) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/${editingChat.chatId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id,
+        },
+        body: JSON.stringify({ chatTitle: newChatTitle.trim() }),
+      });
+
+      if (response.ok) {
+        setEditingChat(null);
+        setNewChatTitle("");
+        loadUserChatHistories();
+      } else {
+        console.error('Ошибка переименования чата');
+      }
+    } catch (error) {
+      console.error('Ошибка переименования чата:', error);
+    }
+  };
+
+  const handleDeleteChat = async (chatId) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот чат?')) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/${chatId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id,
+        },
+      });
+
+      if (response.ok) {
+        loadUserChatHistories();
+        if (currentChatId === chatId) {
+          clearAllChats(); // Если удаляем текущий чат, начинаем новый
+        }
+      } else {
+        console.error('Ошибка удаления чата');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления чата:', error);
+    }
+  };
+
   const handleImageUpload = async (provider, imageFile) => {
     if (!imageFile) return;
 
@@ -1115,19 +1178,52 @@ const MultiChat = () => {
             <ChevronRight className="h-5 w-5 mt-3 mr-2" />
           </Button>
           <ScrollArea className="h-[calc(100vh-100px)]">
-            <div className="space-y-2"> 
-              {userChatHistories.map(chat => ( 
-                <Button
-                  key={chat.chatId}
-                  variant={currentChatId === chat.chatId ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start text-left overflow-hidden whitespace-nowrap text-ellipsis",
-                    currentChatId === chat.chatId ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-gray-700 hover:bg-gray-100 "
-                  )}
-                  onClick={() => handleChatSelect(chat.chatId)}
-                >
-                  {chat.chatTitle}
-                </Button>
+            <div className="space-y-2">
+              {userChatHistories.map(chat => (
+                <div key={chat.chatId} className="flex items-center group">
+                  <Button
+                    variant={currentChatId === chat.chatId ? "default" : "ghost"}
+                    className={cn(
+                      "flex-1 justify-start text-left overflow-hidden whitespace-nowrap text-ellipsis max-w-48",
+                      currentChatId === chat.chatId ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-gray-700 hover:bg-gray-100 "
+                    )}
+                    onClick={() => editingChat?.chatId !== chat.chatId && handleChatSelect(chat.chatId)}
+                  >
+                    {editingChat?.chatId === chat.chatId ? (
+                      <Input
+                        value={newChatTitle}
+                        onChange={(e) => setNewChatTitle(e.target.value)}
+                        onBlur={handleRenameChat}
+                        onKeyPress={(e) => e.key === 'Enter' && handleRenameChat()}
+                        autoFocus
+                        className="h-8 text-black"
+                        onClick={(e) => e.stopPropagation()} // Предотвращаем клик по кнопке
+                      />
+                    ) : (
+                      chat.chatTitle
+                    )}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => {
+                        setEditingChat(chat);
+                        setNewChatTitle(chat.chatTitle);
+                      }}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Переименовать</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDeleteChat(chat.chatId)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Удалить</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               ))}
             </div>
           </ScrollArea>
@@ -1222,10 +1318,35 @@ const MultiChat = () => {
            </CardHeader>
                       {!isHeaderCollapsed && (
               <CardContent className="pt-0">
-                <p className="text-gray-600 mb-4">
-               Отправьте запрос одновременно во все подключенные AI сервисы и получите ответы в реальном времени.
-             </p>
-             
+                <div className="flex flex-wrap items-center justify-between gap-4 -mt-6">
+                  <Tabs defaultValue="chat" className="w-auto" value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <TabsList>
+                      <TabsTrigger value="chat" className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        Основные
+                      </TabsTrigger>
+                      <TabsTrigger value="video" className="flex items-center gap-2">
+                        <Video className="w-4 h-4" />
+                        Видео
+                      </TabsTrigger>
+                      <TabsTrigger value="audio" className="flex items-center gap-2">
+                        <Music className="w-4 h-4" />
+                        Аудио
+                      </TabsTrigger>
+                      <TabsTrigger value="image" className="flex items-center gap-2">
+                        <Image className="w-4 h-4" />
+                        Изображения
+                      </TabsTrigger>
+                      <TabsTrigger value="mix" className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Микс
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  <div className="flex-grow"></div>
+                </div>
+            
                         {/* Статистика */}
            {stats.total > 0 && (
              <div className="flex items-center gap-4 mb-4">
@@ -1278,31 +1399,8 @@ const MultiChat = () => {
        </Card>
 
        <Tabs defaultValue="chat" className="w-full mb-6" value={selectedCategory} onValueChange={setSelectedCategory}>
-         <TabsList className="flex flex-col w-full gap-2 p-1 bg-gray-100 rounded-md sm:flex-row">
-           <TabsTrigger value="chat" className="flex items-center gap-2 w-full sm:w-auto">
-             <MessageSquare className="w-4 h-4" />
-             Основные
-           </TabsTrigger>
-           <TabsTrigger value="video" className="flex items-center gap-2 w-full sm:w-auto">
-             <Video className="w-4 h-4" />
-             Видео
-           </TabsTrigger>
-           <TabsTrigger value="audio" className="flex items-center gap-2 w-full sm:w-auto">
-             <Music className="w-4 h-4" />
-             Аудио
-           </TabsTrigger>
-           <TabsTrigger value="image" className="flex items-center gap-2 w-full sm:w-auto">
-             <Image className="w-4 h-4" />
-             Изображения
-           </TabsTrigger>
-           <TabsTrigger value="mix" className="flex items-center gap-2 w-full sm:w-auto">
-             <Sparkles className="w-4 h-4" />
-             Микс
-           </TabsTrigger>
-         </TabsList>
-
          {/* Контент вкладок */}
-         <TabsContent value="chat" className="mt-6">
+         <TabsContent value="chat" className="mt-2">
            <Label className="text-sm font-medium mb-2 block">Выберите основные провайдеры:</Label>
            <div className="flex flex-wrap gap-2">
              {chatProviders.map(provider => (
@@ -1320,7 +1418,7 @@ const MultiChat = () => {
            </div>
          </TabsContent>
 
-         <TabsContent value="video" className="mt-6">
+         <TabsContent value="video" className="mt-2">
            <Label className="text-sm font-medium mb-2 block">Выберите видео провайдеры:</Label>
            <div className="flex flex-wrap gap-2">
              {videoProviders.map(provider => (
@@ -1338,7 +1436,7 @@ const MultiChat = () => {
            </div>
          </TabsContent>
 
-         <TabsContent value="audio" className="mt-6">
+         <TabsContent value="audio" className="mt-2">
            <Label className="text-sm font-medium mb-2 block">Выберите аудио провайдеры:</Label>
            <div className="flex flex-wrap gap-2">
              {audioProviders.length > 0 ? (
@@ -1360,7 +1458,7 @@ const MultiChat = () => {
            </div>
          </TabsContent>
 
-         <TabsContent value="image" className="mt-6">
+         <TabsContent value="image" className="mt-2">
            <Label className="text-sm font-medium mb-2 block">Выберите провайдеры изображений:</Label>
            <div className="flex flex-wrap gap-2">
              {imageProviders.map(provider => (
@@ -1378,7 +1476,7 @@ const MultiChat = () => {
            </div>
          </TabsContent>
 
-         <TabsContent value="mix" className="mt-6">
+         <TabsContent value="mix" className="mt-2">
            <Label className="text-sm font-medium mb-2 block">Все активные провайдеры:</Label>
            <div className="flex flex-wrap gap-2">
              {activeProviders.map(provider => (

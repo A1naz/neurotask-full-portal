@@ -48,7 +48,9 @@ router.post("/:provider", requireApiKey, async (req, res) => {
       defaultChatTitle
     );
     // Добавляем сообщение пользователя: сохраняем текст и ссылку на изображение в content через тег
-    const contentToSave = imageUrl ? `${message} <IMAGE_URL:${imageUrl}>` : message;
+    const contentToSave = imageUrl
+      ? `${message} <IMAGE_URL:${imageUrl}>`
+      : message;
     console.log("🔍 contentToSave", contentToSave);
     console.log("🔍 imageUrl", imageUrl);
     await chatHistory.addMessage("user", contentToSave, imageUrl); // Передаем imageUrl
@@ -100,7 +102,9 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
             ...(imageUrl &&
-              (provider === "veo3" || provider === "imagen") && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
+              (provider === "veo3" ||
+                provider === "imagen" ||
+                provider === "dalle") && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
             numberOfImages: 1,
           },
           {
@@ -114,18 +118,23 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         if (aiResponseData.data?.success) {
           let contentToSend;
           if (
-            aiResponseData.data.provider === "imagen" &&
-            Array.isArray(aiResponseData.data.images) &&
-            aiResponseData.data.images.length > 0
+            aiResponseData.data.provider === "imagen" ||
+            (aiResponseData.data.provider === "dalle" &&
+              Array.isArray(aiResponseData.data.images) &&
+              aiResponseData.data.images.length > 0)
           ) {
             contentToSend = aiResponseData.data.images.join("\n");
-          } else if (aiResponseData.data.provider === "veo3" && aiResponseData.data.videoUrl) {
+          } else if (
+            aiResponseData.data.provider === "veo3" &&
+            aiResponseData.data.videoUrl
+          ) {
             contentToSend = aiResponseData.data.videoUrl;
           } else {
-            contentToSend = aiResponseData.data.content ||
-            aiResponseData.data.response ||
-            aiResponseData.data?.message ||
-            "Неизвестная ошибка";
+            contentToSend =
+              aiResponseData.data.content ||
+              aiResponseData.data.response ||
+              aiResponseData.data?.message ||
+              "Неизвестная ошибка";
           }
           aiResponse = contentToSend;
         } else {
@@ -423,6 +432,64 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
     res.status(500).json({
       error: "Internal Server Error",
       message: "Ошибка получения списка чатов",
+    });
+  }
+});
+
+// Новые эндпоинты для управления чатами
+// Переименовать чат
+router.put("/:chatId", requireApiKey, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { chatTitle } = req.body;
+    const userId = req.headers["x-user-id"];
+
+    if (!userId || !chatId || !chatTitle) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "userId, chatId и chatTitle обязательны",
+      });
+    }
+
+    await ChatHistory.updateMany({ chatId, userId }, { chatTitle });
+
+    res.json({
+      success: true,
+      message: "Чат успешно переименован",
+    });
+  } catch (error) {
+    console.error("Ошибка переименования чата:", error);
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "Ошибка переименования чата",
+    });
+  }
+});
+
+// Удалить чат
+router.delete("/:chatId", requireApiKey, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.headers["x-user-id"];
+
+    if (!userId || !chatId) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "userId и chatId обязательны",
+      });
+    }
+
+    await ChatHistory.deleteMany({ chatId, userId });
+
+    res.json({
+      success: true,
+      message: "Чат успешно удален",
+    });
+  } catch (error) {
+    console.error("Ошибка удаления чата:", error);
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "Ошибка удаления чата",
     });
   }
 });

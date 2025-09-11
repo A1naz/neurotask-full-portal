@@ -63,4 +63,9 @@ export const aiModelsConfig = {
     models: ["imagen-4.0-generate-001", "imagen-3.0-generate-002"],
     type: 'image',
   },
+  dalle: {
+    label: "DALL-E",
+    models: ["dall-e-3"],
+    type: 'image',
+  },
 };

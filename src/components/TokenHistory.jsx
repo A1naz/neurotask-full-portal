@@ -452,95 +452,6 @@ const TokenHistory = () => {
         </Card>
       </div>
 
-      {/* Фильтры */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Фильтры
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Период */}
-            <div className="space-y-2">
-              <Label>Период</Label>
-              <Select value={filters.period} onValueChange={handlePeriodChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите период" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все время</SelectItem>
-                  <SelectItem value="today">Сегодня</SelectItem>
-                  <SelectItem value="week">Неделя</SelectItem>
-                  <SelectItem value="month">Месяц</SelectItem>
-                  <SelectItem value="custom">Произвольный период</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Тип операции */}
-            <div className="space-y-2">
-              <Label>Тип операции</Label>
-              <Select value={filters.type} onValueChange={handleTypeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Все типы" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все типы</SelectItem>
-                  <SelectItem value="top_up">Пополнения</SelectItem>
-                  <SelectItem value="spend">Списания</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Начальная дата */}
-            {filters.period === 'custom' && (
-              <div className="space-y-2">
-                <Label>Начальная дата</Label>
-                <Input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => handleDateChange('startDate', e.target.value)}
-                />
-              </div>
-            )}
-
-            {/* Конечная дата */}
-            {filters.period === 'custom' && (
-              <div className="space-y-2">
-                <Label>Конечная дата</Label>
-                <Input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => handleDateChange('endDate', e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Кнопки управления фильтрами */}
-          <div className="flex gap-2 mt-4">
-            <Button 
-              variant="outline" 
-              onClick={clearFilters}
-              className="flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Сбросить фильтры
-            </Button>
-            
-            {(filters.period !== 'all' || filters.type !== 'all') && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                {getPeriodText(filters.period)}
-                {filters.type !== 'all' && ` • ${filters.type === 'top_up' ? 'Пополнения' : 'Списания'}`}
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Графики и история */}
       <Tabs defaultValue="history" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
@@ -656,15 +567,84 @@ const TokenHistory = () => {
         <TabsContent value="history" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" />
-                История операций
-                {history.length > 0 && (
-                  <Badge variant="outline" className="ml-2">
-                    {history.length} операций
-                  </Badge>
-                )}
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <CardTitle className="flex items-center gap-2">
+                  <History className="w-5 h-5" />
+                  История операций
+                  {history.length > 0 && (
+                    <Badge variant="outline" className="ml-2">
+                      {history.length} операций
+                    </Badge>
+                  )}
+                </CardTitle>
+
+                <div className="flex flex-wrap items-end gap-2">
+                  {/* Период */}
+                  <div className="space-y-2">
+                    <Label>Период</Label>
+                    <Select value={filters.period} onValueChange={handlePeriodChange}>
+                      <SelectTrigger className="w-auto sm:w-[180px]">
+                        <SelectValue placeholder="Выберите период" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="today">Сегодня</SelectItem>
+                        <SelectItem value="yesterday">Вчера</SelectItem>
+                        <SelectItem value="3days">3 дня</SelectItem>
+                        <SelectItem value="7days">7 дней</SelectItem>
+                        <SelectItem value="30days">30 дней</SelectItem>
+                        <SelectItem value="all">Все время</SelectItem>
+                        <SelectItem value="custom">Произвольный период</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Тип операции */}
+                  <div className="space-y-2">
+                    <Label>Тип операции</Label>
+                    <Select value={filters.type} onValueChange={handleTypeChange}>
+                      <SelectTrigger className="w-auto sm:w-[180px]">
+                        <SelectValue placeholder="Все типы" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все типы</SelectItem>
+                        <SelectItem value="top_up">Пополнения</SelectItem>
+                        <SelectItem value="spend">Списания</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Кнопки управления фильтрами */}
+                  <Button 
+                    variant="outline" 
+                    onClick={clearFilters}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="w-4 h-4" />
+                    Сбросить фильтры
+                  </Button>
+                </div>
+              </div>
+              {/* Custom date range picker */}
+              {filters.period === 'custom' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <Label>Начальная дата</Label>
+                    <Input
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(e) => handleDateChange('startDate', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Конечная дата</Label>
+                    <Input
+                      type="date"
+                      value={filters.endDate}
+                      onChange={(e) => handleDateChange('endDate', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (

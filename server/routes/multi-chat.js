@@ -665,4 +665,66 @@ router.get(
   }
 );
 
+// Переименовать чат
+router.put(
+  "/:chatId",
+  requireAuth,
+  requirePermission("multi-chat"),
+  async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const { chatTitle } = req.body;
+      const userId = req.session.userId;
+
+      const response = await axios.put(
+        `${DATABASE_SERVICE_URL}/api/multi-chat/${chatId}`,
+        { chatTitle },
+        {
+          headers: {
+            "x-api-key": DATABASE_SERVICE_API_KEY,
+            "x-user-id": userId,
+          },
+        }
+      );
+
+      res.status(response.status).json(response.data);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Ошибка переименования чата",
+      });
+    }
+  }
+);
+
+// Удалить чат
+router.delete(
+  "/:chatId",
+  requireAuth,
+  requirePermission("multi-chat"),
+  async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const userId = req.session.userId;
+
+      const response = await axios.delete(
+        `${DATABASE_SERVICE_URL}/api/multi-chat/${chatId}`,
+        {
+          headers: {
+            "x-api-key": DATABASE_SERVICE_API_KEY,
+            "x-user-id": userId,
+          },
+        }
+      );
+
+      res.status(response.status).json(response.data);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Ошибка удаления чата",
+      });
+    }
+  }
+);
+
 module.exports = router;

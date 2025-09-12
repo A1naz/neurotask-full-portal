@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   MessageSquare,
   Cog,
@@ -86,6 +86,9 @@ export const AuthProvider = ({ children }) => {
   const [profileMenuItems, setProfileMenuItems] = useState([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(false); // Change to false
   const [menuError, setMenuError] = useState(null);
+  const [userChatHistories, setUserChatHistories] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+
 
 // API base URL
 const API_BASE = (() => {
@@ -129,15 +132,15 @@ const API_BASE = (() => {
   };
 
   // Function to map icons to menu items - moved outside fetchAllowedRoutes for optimization
-  const mapIcons = (items) => {
+  const mapIcons = useCallback((items) => {
     return items.map(item => ({
       ...item,
       icon: iconComponents[item.iconName],
       children: item.children ? mapIcons(item.children) : [],
     }));
-  };
+  }, []);
 
-  const fetchAllowedRoutes = async (user) => {
+  const fetchAllowedRoutes = useCallback(async (user) => {
     // Ensure this function is only called if a user is present
     if (!user) return [];
 
@@ -191,9 +194,9 @@ const API_BASE = (() => {
     } finally {
       setIsLoadingMenu(false);
     }
-  };
+  }, [API_BASE, mapIcons]);
 
-  const updateSidebarState = async (isCollapsed) => {
+  const updateSidebarState = useCallback(async (isCollapsed) => {
     if (!user) return;
 
     try {
@@ -214,9 +217,9 @@ const API_BASE = (() => {
       // В случае ошибки можно откатить состояние, если это необходимо
       setIsSidebarCollapsed(!isCollapsed);
     }
-  };
+  }, [user, csrfToken, API_BASE]);
 
-  const updateInterfaceSettings = async (settings) => {
+  const updateInterfaceSettings = useCallback(async (settings) => {
     if (!user) return;
 
     const oldSettings = {
@@ -248,7 +251,47 @@ const API_BASE = (() => {
       setAgentsExpanded(oldSettings.agentsExpanded);
       setGenerationsExpanded(oldSettings.generationsExpanded);
     }
-  };
+  }, [user, csrfToken, API_BASE, agentsExpanded, generationsExpanded]);
+
+  const loadUserChatHistories = useCallback(async () => {
+    if (!user || !csrfToken) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/multi-chat/all-chat-histories`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'x-user-id': user._id,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserChatHistories(data.chatHistories || []);
+      } else {
+        console.error('Ошибка загрузки истории чатов пользователя');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки истории чатов пользователя:', error);
+    }
+  }, [user, csrfToken, API_BASE]);
+  
+  const selectChat = useCallback(async (chatId) => {
+      if (!user || !csrfToken) return;
+      try {
+          await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
+              method: 'PATCH',
+              credentials: 'include',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': csrfToken,
+                  'x-user-id': user._id,
+              },
+              body: JSON.stringify({ currentChatId: chatId }),
+          });
+          setCurrentChatId(chatId);
+      } catch (error) {
+          console.error('Ошибка при выборе чата:', error);
+      }
+  }, [user, csrfToken, API_BASE]);
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -526,7 +569,11 @@ const API_BASE = (() => {
     profileMenuItems,
     isLoadingMenu,
     menuError,
-    fetchAllowedRoutes // Expose fetchAllowedRoutes
+    fetchAllowedRoutes, // Expose fetchAllowedRoutes
+    userChatHistories,
+    currentChatId,
+    selectChat,
+    loadUserChatHistories,
   };
 
   // Fetch menu items when user changes or on initial load if not already loaded

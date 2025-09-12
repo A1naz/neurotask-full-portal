@@ -369,6 +369,7 @@ router.get("/history/:provider", requireApiKey, async (req, res) => {
 router.get("/all-chat-histories", requireApiKey, async (req, res) => {
   try {
     const userId = req.headers["x-user-id"];
+    const { page = 1, limit = 30 } = req.query;
 
     if (!userId) {
       return res.status(400).json({
@@ -378,7 +379,7 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
     }
 
     // Используем агрегацию для получения уникальных чатов с последней активностью
-    const chatSummaries = await ChatHistory.aggregate([
+    const aggregationPipeline = [
       {
         $match: {
           userId: new mongoose.Types.ObjectId(userId),
@@ -404,7 +405,16 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
         },
       },
       { $sort: { lastActivity: -1 } },
+    ];
+    
+    const totalChats = (await ChatHistory.aggregate(aggregationPipeline)).length;
+
+    const chatSummaries = await ChatHistory.aggregate([
+        ...aggregationPipeline,
+        { $skip: (page - 1) * limit },
+        { $limit: parseInt(limit) },
     ]);
+
 
     // Получаем названия чатов из AISettings
     const aiSettings = await AISettings.findByUserId(userId);
@@ -426,6 +436,10 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
     res.json({
       success: true,
       chatHistories: enrichedChatHistories,
+      total: totalChats,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      hasMore: (page * limit) < totalChats,
     });
   } catch (error) {
     console.error("Ошибка получения списка чатов:", error);

@@ -192,7 +192,7 @@ router.post(
     try {
       const userId = req.session.userId;
       const { provider } = req.params;
-      const { message, systemPrompt, chatId, imageUrl } = req.body;
+      const { message, systemPrompt, chatId, imageUrl, type } = req.body;
 
       if (!message) {
         return res.status(400).json({
@@ -245,6 +245,7 @@ router.post(
           systemPrompt,
           chatId, // Передаем chatId в database-service
           imageUrl,
+          type,
         },
         {
           headers: {

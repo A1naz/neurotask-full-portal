@@ -50,6 +50,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTokenBalance } from "@/contexts/TokenBalanceContext";
 import { cn } from "@/lib/utils";
 import ProfileDropdown from "./ProfileDropdown"; // Импортируем новый компонент
+import ChatHistoryMenu from './ChatHistoryMenu';
 
 // Маппинг имен иконок на компоненты иконок
 const iconComponents = {
@@ -102,6 +103,10 @@ const Layout = ({ children }) => {
     profileMenuItems, // Get profile menu items from AuthContext
     isLoadingMenu, // Get loading state from AuthContext
     menuError, // Get error state from AuthContext
+    userChatHistories,
+    selectChat,
+    currentChatId,
+    loadUserChatHistories,
   } = useAuth();
   const { balance: tokenBalance } = useTokenBalance();
   const navigate = useNavigate();
@@ -111,21 +116,21 @@ const Layout = ({ children }) => {
   // useEffect(() => {
   //   const fetchMenuItems = async () => {
   //     if (!user) return;
-
+  //
   //     setIsLoadingMenu(true);
   //     setMenuError(null);
-
+  //
   //     try {
   //       const response = await fetch(`${API_BASE}/api/menu`, {
   //         credentials: 'include',
   //       });
-
+  //
   //       if (!response.ok) {
   //         throw new Error('Не удалось загрузить конфигурацию меню.');
   //       }
-
+  //
   //       const data = await response.json();
-
+  //
   //       if (data.success) {
   //         // Функция для добавления иконок к пунктам меню
   //         const mapIcons = (items) => {
@@ -135,10 +140,10 @@ const Layout = ({ children }) => {
   //             children: item.children ? mapIcons(item.children) : [],
   //           }));
   //         };
-
+  //
   //         setSidebarMenuItems(mapIcons(data.sidebarMenuItems));
   //         setProfileMenuItems(mapIcons(data.profileMenuItems));
-
+  //
   //         // Рекурсивно собираем все доступные пути для ProtectedRoute
   //         const getAllPaths = (items) => {
   //           let paths = [];
@@ -156,7 +161,7 @@ const Layout = ({ children }) => {
   //         const profilePaths = getAllPaths(data.profileMenuItems);
   //         // Объединяем и удаляем дубликаты
   //         setAllowedRoutes([...new Set([...sidebarPaths, ...profilePaths])]);
-
+  //
   //       } else {
   //         throw new Error(data.message || 'Ошибка при получении меню.');
   //       }
@@ -166,7 +171,7 @@ const Layout = ({ children }) => {
   //       setIsLoadingMenu(false);
   //     }
   //   };
-
+  //
   //   fetchMenuItems();
   // }, [user, API_BASE, setAllowedRoutes]);
 
@@ -174,6 +179,9 @@ const Layout = ({ children }) => {
   useEffect(() => {
     if (user && !sidebarMenuItems.length && !isLoadingMenu && !menuError) {
       fetchAllowedRoutes();
+    }
+    if (user) {
+        loadUserChatHistories();
     }
   }, [user, sidebarMenuItems, isLoadingMenu, menuError, fetchAllowedRoutes]);
 
@@ -189,6 +197,60 @@ const Layout = ({ children }) => {
     }
     return (
       location.pathname === path || location.pathname.startsWith(path + "/")
+    );
+  };
+
+  const renderChatHistory = () => {
+    if (!userChatHistories || userChatHistories.length === 0) {
+      return null;
+    }
+
+    const groupedByMonth = userChatHistories.reduce((acc, chat) => {
+      const month = new Date(chat.createdAt).toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!acc[month]) {
+        acc[month] = [];
+      }
+      acc[month].push(chat);
+      return acc;
+    }, {});
+
+    const handleChatClick = (chatId) => {
+        selectChat(chatId);
+        navigate('/assistant/multi-chat');
+    };
+
+    return (
+      <div className="mt-4 pt-4 border-t">
+        <h2 className="px-4 text-lg font-semibold tracking-tight mb-2 flex items-center">
+            <History className="h-5 w-5 mr-2" />
+            История
+        </h2>
+        <div className="space-y-2">
+            {Object.entries(groupedByMonth).map(([month, chats]) => (
+                <div key={month}>
+                    <h3 className="px-4 text-sm font-medium text-gray-500 my-2">{month}</h3>
+                    {chats.map(chat => (
+                         <Button
+                            key={chat.chatId}
+                            variant={currentChatId === chat.chatId ? "secondary" : "ghost"}
+                            className={cn(
+                                "w-full justify-start text-sm mb-1",
+                                isSidebarCollapsed && "px-2"
+                            )}
+                            onClick={() => handleChatClick(chat.chatId)}
+                         >
+                            {!isSidebarCollapsed && <span className="truncate">{chat.chatTitle || `Чат ${chat.chatId.substring(0,8)}`}</span>}
+                         </Button>
+                    ))}
+                </div>
+            ))}
+        </div>
+        {!isSidebarCollapsed && (
+            <Button variant="link" className="w-full mt-2" onClick={() => {/* TODO: Implement show all */}}>
+                Показать всё
+            </Button>
+        )}
+      </div>
     );
   };
 
@@ -409,6 +471,7 @@ const Layout = ({ children }) => {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 overflow-y-auto">
             {renderMenuItems()}
+            <ChatHistoryMenu />
           </nav>
 
           {/* User Profile Section & Collapse button */}

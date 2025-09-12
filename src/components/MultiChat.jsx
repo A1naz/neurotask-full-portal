@@ -70,7 +70,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const MultiChat = () => {
-  const { API_BASE, csrfToken, user } = useAuth();
+  const { API_BASE, csrfToken, user, currentChatId, selectChat } = useAuth();
   const { balance, updateBalance } = useTokenBalance();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -132,7 +132,6 @@ const MultiChat = () => {
   const scrollAreaRef = useRef(null);
   const chatRefs = useRef({});
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState(null);
   const [userChatHistories, setUserChatHistories] = useState([]); // Новое состояние для истории чатов пользователя
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Состояние для управления видимостью сайдбара
   const [isFirstMessage, setIsFirstMessage] = useState(true); // Состояние для отслеживания первого сообщения в новом чате
@@ -185,7 +184,7 @@ const MultiChat = () => {
       loadCustomPrompt();
       loadUserChatHistories(); // Загружаем историю чатов пользователя
     }
-  }, [csrfToken, user?._id, selectedCategory]);
+  }, [csrfToken, user?._id, selectedCategory, currentChatId]);
 
   const scrollToBottom = (provider) => {
     const chatRef = chatRefs.current[provider];
@@ -314,25 +313,13 @@ const MultiChat = () => {
         
         let fetchedCurrentChatId = aiSettingsData.aiSettings.currentChatId;
 
-        if (!fetchedCurrentChatId) {
-          // Если currentChatId нет, генерируем новый и сохраняем его
+        if (!currentChatId && !fetchedCurrentChatId) {
           const newChatId = uuidv4();
-          setCurrentChatId(newChatId);
-          // Отправляем PATCH запрос на бэкенд, чтобы сохранить новый currentChatId
-          await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
-            method: 'PATCH',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': csrfToken,
-              'x-user-id': user._id
-            },
-            body: JSON.stringify({ currentChatId: newChatId }),
-          });
-          fetchedCurrentChatId = newChatId; // Используем новый chatId для текущей сессии
+          selectChat(newChatId);
+          fetchedCurrentChatId = newChatId;
+        } else {
+            fetchedCurrentChatId = currentChatId || fetchedCurrentChatId;
         }
-        
-        setCurrentChatId(fetchedCurrentChatId);
         
         // Use locally stored order if available
         const savedOrder = localStorage.getItem('multichat_selected_providers');
@@ -738,34 +725,19 @@ const MultiChat = () => {
       setIsClearingChats(true);
       // Вместо удаления истории, мы устанавливаем currentChatId в null
       const newChatId = uuidv4(); // Генерируем новый chatId для новой сессии
-      const response = await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
-          'x-user-id': user._id
-        },
-        body: JSON.stringify({ currentChatId: newChatId }),
-      });
+      await selectChat(newChatId);
 
-      if (response.ok) {
-        // Очищаем локальную историю и сбрасываем currentChatId
-        setChatHistories({});
-        setMessage('');
-        setResponses({});
-        setCurrentChatId(newChatId); // Устанавливаем новый currentChatId
-        setIsFirstMessage(true); // Сбрасываем флаг, так как это новый чат
+      // Очищаем локальную историю и сбрасываем currentChatId
+      setChatHistories({});
+      setMessage('');
+      setResponses({});
+      setIsFirstMessage(true); // Сбрасываем флаг, так как это новый чат
 
-        setError(`✅ Начат новый чат.`);
-        setTimeout(() => setError(''), 3000);
+      setError(`✅ Начат новый чат.`);
+      setTimeout(() => setError(''), 3000);
 
-        loadUserChatHistories(); // Обновляем историю чатов после создания нового
+      loadUserChatHistories(); // Обновляем историю чатов после создания нового
 
-      } else {
-        const errorData = await response.json();
-        setError(`Ошибка начала нового чата: ${errorData.message || 'Неизвестная ошибка'}`);
-      }
     } catch (error) {
       setError('Ошибка при начале нового чата: ' + error.message);
     } finally {
@@ -968,38 +940,17 @@ const MultiChat = () => {
   const stats = getResponseStats();
 
   const handleChatSelect = async (chatId) => {
-    if (!csrfToken || !user?._id) return;
-    try {
-      // Обновляем currentChatId на бэкенде
-      await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}/current-chat`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
-          'x-user-id': user._id
-        },
-        body: JSON.stringify({ currentChatId: chatId }),
-      });
+    await selectChat(chatId);
+    setChatHistories({}); // Очищаем текущие истории для загрузки новых
 
-      // Обновляем локальное состояние
-      setCurrentChatId(chatId);
-      setChatHistories({}); // Очищаем текущие истории для загрузки новых
-
-      // Загружаем историю для каждого активного провайдера с новым chatId
-      selectedProviders.forEach(provider => {
-        console.log(`[handleChatSelect] Loading history for provider: ${provider}, chatId: ${chatId}`);
+    // Загружаем историю для каждого активного провайдера с новым chatId
+    selectedProviders.forEach(provider => {
         loadChatHistory(provider, chatId);
-      });
+    });
 
-      setIsSidebarOpen(false); // Закрываем сайдбар
-      setError(`✅ Переключено на чат с ID: ${chatId}`);
-      setTimeout(() => setError(''), 3000);
-
-    } catch (error) {
-      console.error('Ошибка при выборе чата:', error);
-      setError(`Ошибка при выборе чата: ${error.message}`);
-    }
+    setIsSidebarOpen(false); // Закрываем сайдбар
+    setError(`✅ Переключено на чат.`);
+    setTimeout(() => setError(''), 3000);
   };
 
   const handleRenameChat = async () => {

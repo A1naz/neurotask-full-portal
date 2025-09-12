@@ -101,9 +101,11 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
+            generationType: "image",
             ...(imageUrl &&
               (provider === "veo3" ||
                 provider === "imagen" ||
+                provider === "sora" ||
                 provider === "dalle") && { imageUrl }), // Добавляем imageUrl для veo3 и imagen
             numberOfImages: 1,
           },
@@ -129,6 +131,13 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             aiResponseData.data.videoUrl
           ) {
             contentToSend = aiResponseData.data.videoUrl;
+          } else if (
+            aiResponse.data.provider === "sora" &&
+            aiResponse.data.videoUrl &&
+            Array.isArray(aiResponse.data.videoUrl) &&
+            aiResponse.data.videoUrl.length > 0
+          ) {
+            contentToSend = aiResponse.data.videoUrl.join("\n");
           } else {
             contentToSend =
               aiResponseData.data.content ||
@@ -406,15 +415,15 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
       },
       { $sort: { lastActivity: -1 } },
     ];
-    
-    const totalChats = (await ChatHistory.aggregate(aggregationPipeline)).length;
+
+    const totalChats = (await ChatHistory.aggregate(aggregationPipeline))
+      .length;
 
     const chatSummaries = await ChatHistory.aggregate([
-        ...aggregationPipeline,
-        { $skip: (page - 1) * limit },
-        { $limit: parseInt(limit) },
+      ...aggregationPipeline,
+      { $skip: (page - 1) * limit },
+      { $limit: parseInt(limit) },
     ]);
-
 
     // Получаем названия чатов из AISettings
     const aiSettings = await AISettings.findByUserId(userId);
@@ -439,7 +448,7 @@ router.get("/all-chat-histories", requireApiKey, async (req, res) => {
       total: totalChats,
       page: parseInt(page),
       limit: parseInt(limit),
-      hasMore: (page * limit) < totalChats,
+      hasMore: page * limit < totalChats,
     });
   } catch (error) {
     console.error("Ошибка получения списка чатов:", error);

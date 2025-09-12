@@ -802,12 +802,12 @@ const MultiChat = () => {
     const relativeY = y - rect.top;
 
               // Минимальный размер
-      const minWidth = 400;
-      const minHeight = 350;
+      const minWidth = 320;
+      const minHeight = 280;
 
      // Максимальный размер (80% от ширины экрана)
-     const maxWidth = Math.min(window.innerWidth * 0.8, 800);
-     const maxHeight = Math.min(window.innerHeight * 0.8, 600);
+     const maxWidth = Math.min(window.innerWidth * 0.8, 640);
+     const maxHeight = Math.min(window.innerHeight * 0.8, 480);
 
     const newWidth = Math.max(minWidth, Math.min(maxWidth, relativeX));
     const newHeight = Math.max(minHeight, Math.min(maxHeight, relativeY));

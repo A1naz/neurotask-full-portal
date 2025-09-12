@@ -300,7 +300,7 @@ const ProviderCard = React.forwardRef(({
         }
       )}
       style={{
-        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : 'min(100%, 400px)'),
+        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : 'min(100%, 320px)'),
         height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : 'auto'),
         minWidth: isExpanded ? '100%' : 'auto',
         minHeight: isExpanded ? 'auto' : 'auto',

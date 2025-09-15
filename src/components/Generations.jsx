@@ -26,7 +26,7 @@ const Generations = () => {
       icon: Video,
       color: 'bg-gradient-to-br from-purple-500 to-purple-600',
       iconColor: 'text-purple-600',
-      features: ['Runway Gen-3', 'Pika Labs', 'OpenAI Sora', 'Stable Video'],
+      features: ['Runway Gen-3', 'Pika Labs', 'OpenAI Sora Video', 'Stable Video'],
       status: 'В разработке',
       path: '/generations/video'
     },
@@ -37,7 +37,7 @@ const Generations = () => {
       icon: Image,
       color: 'bg-gradient-to-br from-green-500 to-green-600',
       iconColor: 'text-green-600',
-      features: ['Midjourney', 'DALL-E 3', 'Stable Diffusion', 'Adobe Firefly'],
+      features: ['Midjourney', 'DALL-E 3', 'Stable Diffusion', 'Adobe Firefly', 'OpenAI Sora Image'],
       status: 'В разработке',
       path: '/generations/images'
     },

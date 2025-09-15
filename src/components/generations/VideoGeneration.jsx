@@ -51,8 +51,8 @@ const VideoGeneration = () => {
       price: 'От $0.03/сек'
     },
     {
-      id: 'sora',
-      name: 'OpenAI Sora',
+      id: 'soraVideo',
+      name: 'OpenAI Sora Video',
       description: 'Революционная модель для создания реалистичных видео',
       icon: Play,
       color: 'bg-gradient-to-br from-green-500 to-green-600',

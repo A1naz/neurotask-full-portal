@@ -444,8 +444,15 @@ const MultiChat = () => {
         return { status: 'error', content: '', error: 'Ошибка безопасности: CSRF токен или пользователь не найден' };
       }
 
+      // 🔍 FIX: Убедимся, что chatId существует перед отправкой
+      let finalChatId = currentChatId;
+      if (!finalChatId) {
+        finalChatId = uuidv4();
+        selectChat(finalChatId); // Обновляем chatId в контексте
+      }
+
       // Если это первое сообщение в чате, отправляем запрос на создание названия
-      if (isFirstMessage && currentChatId) {
+      if (isFirstMessage && finalChatId) {
         try {
           await fetch(`${API_BASE}/api/chat-naming/generate-name`, {
             method: 'POST',
@@ -456,7 +463,7 @@ const MultiChat = () => {
               'x-user-id': user._id,
             },
             body: JSON.stringify({
-              chatId: currentChatId,
+              chatId: finalChatId,
               message: messageToSend.trim(),
               provider: provider, // Используем текущего провайдера для названия чата
             }),
@@ -485,7 +492,7 @@ const MultiChat = () => {
         body: JSON.stringify({ 
           message: messageToSend.trim(),
           systemPrompt: systemPrompt,
-          chatId: currentChatId, // Передаем currentChatId
+          chatId: finalChatId, // Передаем finalChatId
           ...(imageUrl && { imageUrl }), // Передаем imageUrl, если он есть
         }),
       });
@@ -493,7 +500,7 @@ const MultiChat = () => {
       if (response.ok) {
         const data = await response.json();
         // После успешного ответа обновляем историю чата для конкретного провайдера
-        loadChatHistory(provider, currentChatId);
+        loadChatHistory(provider, finalChatId);
         setTimeout(() => scrollToBottom(provider), 200);
         return { status: data.status, content: data.content, error: data.error, context: data.context, tokensDeducted: data.tokensDeducted, newBalance: data.newBalance };
       } else {
@@ -863,7 +870,8 @@ const MultiChat = () => {
       'openai-tts': '🔊',
       runway: '🎬',
       pika: '⚡',
-      sora: '🎥',
+      soraVideo: '🎥',
+      soraImage: '🖼️',
       'stable-video': '🎞️',
       luma: '🎭',
       midjourney: '🎨',
@@ -1274,7 +1282,7 @@ const MultiChat = () => {
                     <TabsList>
                       <TabsTrigger value="chat" className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4" />
-                        Основные
+                        Текстовые
                       </TabsTrigger>
                       <TabsTrigger value="video" className="flex items-center gap-2">
                         <Video className="w-4 h-4" />

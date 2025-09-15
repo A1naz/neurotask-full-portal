@@ -88,7 +88,8 @@ const ProviderCard = React.forwardRef(({
       'openai-tts': '🔊',
       runway: '🎬',
       pika: '⚡',
-      sora: '🎥',
+      soraVideo: '🎥',
+      soraImage: '🖼️',
       'stable-video': '🎞️',
       luma: '🎭',
       midjourney: '🎨',
@@ -118,7 +119,8 @@ const ProviderCard = React.forwardRef(({
       'openai-tts': 'OpenAI TTS',
       runway: 'Runway Gen-3',
       pika: 'Pika Labs',
-      sora: 'OpenAI Sora',
+      soraVideo: 'OpenAI Sora Video',
+      soraImage: 'OpenAI Sora Image',
       'stable-video': 'Stable Video Diffusion',
       luma: 'Luma AI',
       midjourney: 'Midjourney',
@@ -562,7 +564,7 @@ const ProviderCard = React.forwardRef(({
             </div>
           ) : (
             <div className="flex gap-2 items-center relative">
-              {(provider === 'veo3' || provider === 'imagen') && (
+              {(provider === 'veo3' || provider === 'imagen' || provider === 'soraImage' || provider === 'soraVideo' || provider === 'dalle') && (
                 <>
                   <input
                     type="file"

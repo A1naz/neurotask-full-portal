@@ -601,12 +601,12 @@ const TaskBoard = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
       {/* Заголовок и кнопки */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Задачи</h1>
-          <p className="text-gray-600 mt-2">Управление задачами и проектами</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Задачи</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Управление задачами и проектами</p>
           {team && (
             <div className="flex items-center gap-2 mt-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -615,12 +615,13 @@ const TaskBoard = () => {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-white rounded-lg border p-1">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-white rounded-lg border p-1 w-full sm:w-auto">
             <Button
               variant={viewMode === 'kanban' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('kanban')}
+              className="flex-1 sm:flex-none"
             >
               Kanban
             </Button>
@@ -628,21 +629,22 @@ const TaskBoard = () => {
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('list')}
+              className="flex-1 sm:flex-none"
             >
               Список
             </Button>
           </div>
-          <Button onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Создать задачу
           </Button>
           <Button 
             variant="outline" 
             onClick={() => setShowNotificationSettings(true)}
-            className="border-orange-200 text-orange-700 hover:bg-orange-50"
+            className="border-orange-200 text-orange-700 hover:bg-orange-50 w-full sm:w-auto"
           >
             <Bell className="w-4 h-4 mr-2" />
-            Настройки уведомлений
+            Уведомления
           </Button>
         </div>
       </div>
@@ -656,8 +658,8 @@ const TaskBoard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Поиск задач..."
@@ -730,7 +732,7 @@ const TaskBoard = () => {
       </Card>
 
       {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {statuses.map(status => {
           const count = filteredTasks.filter(t => t.status === status.value).length;
           return (
@@ -748,7 +750,7 @@ const TaskBoard = () => {
 
       {/* Kanban доска */}
       {viewMode === 'kanban' && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="hidden lg:grid lg:grid-cols-5 gap-6">
           {statuses.map(status => (
             <div key={status.value} className="space-y-4">
               <div className="flex items-center justify-between">
@@ -918,6 +920,96 @@ const TaskBoard = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Mobile Kanban View */}
+      {viewMode === 'kanban' && (
+        <div className="lg:hidden">
+          <Select onValueChange={(value) => {
+            const element = document.getElementById(`status-section-${value}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Выберите статус для просмотра" />
+            </SelectTrigger>
+            <SelectContent>
+              {statuses.map(status => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label} ({getTasksByStatus(status.value).length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="mt-4 space-y-8">
+            {statuses.map(status => (
+              <div key={status.value} id={`status-section-${status.value}`} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className={`text-lg font-semibold px-3 py-2 rounded-lg ${status.bgColor} ${status.color}`}>
+                    {status.label}
+                  </h3>
+                  <Badge variant="secondary" className="ml-2">
+                    {getTasksByStatus(status.value).length}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-3">
+                  {getTasksByStatus(status.value).map(task => (
+                    <Card
+                      key={task._id}
+                      className="cursor-pointer"
+                      onClick={() => openTask(task)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{getTypeIcon(task.type)}</span>
+                            <h4 className="font-medium text-gray-900">{task.title}</h4>
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={getPriorityColor(task.priority)}>
+                              {priorities.find(p => p.value === task.priority)?.label}
+                            </Badge>
+                            {isOverdue(task) && (
+                              <Badge variant="destructive" className="flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Просрочено
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-gray-500 pt-2 border-t mt-2">
+                            {task.assignee && (
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {task.assignee.username}
+                              </div>
+                            )}
+                            {task.dueDate && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {formatDate(task.dueDate)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {getTasksByStatus(status.value).length === 0 && (
+                    <div className="text-center text-gray-400 py-8">
+                      Нет задач
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1253,7 +1345,7 @@ const TaskBoard = () => {
       
       {/* Диалог комментариев */}
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[95vw]">
           <DialogHeader>
             <DialogTitle>Добавить комментарий</DialogTitle>
             <DialogDescription>
@@ -1294,7 +1386,7 @@ const TaskBoard = () => {
       
       {/* Диалог настроек уведомлений */}
       <Dialog open={showNotificationSettings} onOpenChange={setShowNotificationSettings}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[95vw]">
           <DialogHeader>
             <DialogTitle>Настройки уведомлений</DialogTitle>
             <DialogDescription>
@@ -1396,7 +1488,7 @@ const TaskBoard = () => {
 
       {/* Диалог просмотра/редактирования задачи */}
       <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Задача: {selectedTask?.title}</DialogTitle>
             <DialogDescription>
@@ -1534,7 +1626,7 @@ const TaskBoard = () => {
                   {selectedTask.comments && selectedTask.comments.length > 0 ? (
                     selectedTask.comments.map((comment, index) => (
                       <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
                           <span className="font-medium text-sm">{comment.author?.username || 'Пользователь'}</span>
                           <span className="text-xs text-gray-500">
                             {new Date(comment.timestamp).toLocaleString('ru-RU')}

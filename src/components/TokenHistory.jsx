@@ -371,7 +371,7 @@ const TokenHistory = () => {
                 min="1"
               />
               <p className="text-sm text-gray-500 mt-2">
-                Стоимость токена 1р. К оплате: {topUpAmount ? parseInt(topUpAmount, 10) : 0}₽
+                Стоимость токена 1₽ К оплате: {topUpAmount ? parseInt(topUpAmount, 10) : 0}₽
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">

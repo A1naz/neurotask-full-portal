@@ -52,6 +52,8 @@ const chatHistorySchema = new mongoose.Schema(
         "runway",
         "pika",
         "sora",
+        "soraVideo",
+        "soraImage",
       ],
       index: true,
     },

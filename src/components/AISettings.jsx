@@ -31,17 +31,15 @@ const AISettings = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  const [aiProviders, setAiProviders] = useState({
-    openai: false,
-    gemini: false,
-    xai: false,
-    yandexgpt: false,
-    gigachat: false,
-    anthropic: false,
-    deepseek: false,
-    veo3: false, // Added for video generation
-    imagen: false // Added for image generation
+  // Динамически создаем начальное состояние для aiProviders
+  const [aiProviders, setAiProviders] = useState(() => {
+    const initialState = {};
+    Object.keys(aiModelsConfig).forEach(key => {
+      initialState[key] = false;
+    });
+    return initialState;
   });
+
   const [selectedModels, setSelectedModels] = useState({});
 
   // Основные AI модели (чат)
@@ -122,12 +120,12 @@ const AISettings = () => {
       isDisabled: true
     },
     {
-      key: 'sora',
-      name: 'OpenAI Sora',
+      key: 'soraVideo',
+      name: 'OpenAI Sora Video',
       description: 'Революционная модель видео',
       icon: '🎥',
       color: 'bg-green-100 text-green-800',
-      isDisabled: true
+      isDisabled: false
     },
     {
       key: 'stable-video',
@@ -234,9 +232,9 @@ const AISettings = () => {
       isDisabled: true
     },
     {
-      key: 'sora',
-      name: 'OpenAI Sora',
-      description: 'Революционная модель для создания реалистичных фото и видео',
+      key: 'soraImage',
+      name: 'OpenAI Sora Image',
+      description: 'Революционная модель для создания реалистичных фото',
       icon: '🎪',
       color: 'bg-red-100 text-red-800',
       isDisabled: false
@@ -251,7 +249,7 @@ const AISettings = () => {
     }
   ];
 
-  const providersList = chatModels; // Для обратной совместимости
+  const providersList = [...chatModels, ...videoModels, ...audioModels, ...imageModels];
 
   useEffect(() => {
     if (csrfToken) {
@@ -569,7 +567,7 @@ const AISettings = () => {
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Основные
+                Текстовые
               </TabsTrigger>
               <TabsTrigger value="video" className="flex items-center gap-2">
                 <Video className="w-4 h-4" />
@@ -589,7 +587,7 @@ const AISettings = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold">Основные AI модели</h3>
+                  <h3 className="text-lg font-semibold">Текстовые AI модели</h3>
                 </div>
                 {renderModelsGrid(chatModels)}
               </div>

@@ -168,53 +168,92 @@ const TeamManagement = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
 
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <CardTitle>Команда</CardTitle>
           <Button onClick={() => handleOpenModal()}>
             <PlusCircle className="mr-2 h-4 w-4" /> Добавить сотрудника
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Логин</TableHead>
-                <TableHead>Должность</TableHead>
-                <TableHead>Разрешения</TableHead>
-                <TableHead className="text-right">Функционал</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map(employee => (
-                <TableRow key={employee._id}>
-                  <TableCell>{employee.username}</TableCell>
-                  <TableCell>{employee.position}</TableCell>
-                  <TableCell>
-                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                      {employee.permissions.length > 0 ? 'Есть права' : 'Нет прав'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenModal(employee)}>
-                        <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(employee._id)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </TableCell>
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Логин</TableHead>
+                  <TableHead>Должность</TableHead>
+                  <TableHead>Разрешения</TableHead>
+                  <TableHead className="text-right">Функционал</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {employees.map(employee => (
+                  <TableRow key={employee._id}>
+                    <TableCell>{employee.username}</TableCell>
+                    <TableCell>{employee.position}</TableCell>
+                    <TableCell>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        {employee.permissions.length > 0 ? 'Есть права' : 'Нет прав'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenModal(employee)}>
+                          <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(employee._id)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="sm:hidden space-y-4">
+            {employees.map(employee => (
+              <Card key={employee._id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{employee.username}</h3>
+                      <p className="text-sm text-muted-foreground">{employee.position}</p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleOpenModal(employee)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Редактировать
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(employee._id)} className="text-red-500">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="mt-4">
+                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                      {employee.permissions.length > 0 ? `${employee.permissions.length} прав` : 'Нет прав'}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </CardContent>
       </Card>
       
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent className="sm:max-w-[525px] w-[95vw]">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</DialogTitle>
           </DialogHeader>
@@ -265,7 +304,7 @@ const TeamManagement = () => {
       </Dialog>
 
       <Dialog open={isPermissionsModalOpen} onOpenChange={setIsPermissionsModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] w-[95vw]">
           <DialogHeader>
             <DialogTitle>Выбор разрешений</DialogTitle>
             <DialogDescription>

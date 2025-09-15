@@ -12,32 +12,38 @@ const mongoose = require("mongoose");
 // Отправить сообщение конкретному AI провайдеру
 router.post("/:provider", requireApiKey, async (req, res) => {
   try {
-    const { provider } = req.params;
+ 
+    let { provider } = req.params;
+   
     const { message, systemPrompt, chatId, imageUrl } = req.body; // Добавляем imageUrl
 
+
+    
     if (!message) {
       return res.status(400).json({
         error: "Bad Request",
         message: "message обязателен",
       });
     }
-
+    
     const userId = req.headers["x-user-id"];
-
+    
     if (!userId) {
       return res.status(400).json({
         error: "Bad Request",
         message: "x-user-id заголовок обязателен",
       });
     }
-
+    console.log("🔍 provider", provider);
+    
     if (!chatId) {
+      console.log("🔍 chatId", chatId);
       return res.status(400).json({
         error: "Bad Request",
         message: "chatId обязателен",
       });
     }
-
+    
     const defaultChatTitle = `Чат ${new Date().toLocaleDateString("ru-RU")}`; // Placeholder title, will only be used if chat is new
 
     // Добавляем сообщение в историю чата
@@ -77,6 +83,8 @@ router.post("/:provider", requireApiKey, async (req, res) => {
 
       const providerUrl = providerUrls["openai"];
 
+  
+
       if (!providerUrl) {
         aiResponse = `Провайдер ${provider} не настроен. Отсутствует переменная окружения ${provider.toUpperCase()}_SERVICE_URL`;
         success = false;
@@ -86,6 +94,20 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         let selectedModel = aiSettings?.selectedModels
           ? aiSettings.selectedModels[provider]
           : provider;
+
+          let generationType = "image";
+
+          if (provider === "soraVideo") {
+            provider = "sora";
+            generationType = "video";
+          }
+          if (provider === "soraImage") {
+            provider = "sora";
+            generationType = "image";
+          }
+
+          console.log("🔍 generationType", generationType);
+          console.log("🔍 provider", provider);
 
         // Отправляем запрос к AI провайдеру
         const aiResponseData = await axios.post(
@@ -101,7 +123,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             model: selectedModel,
             context: chatContext, // 🔍 ПЕРЕДАЕМ КОНТЕКСТ В AI ПРОВАЙДЕР
             userId: userId,
-            generationType: "image",
+            generationType: generationType,
             ...(imageUrl &&
               (provider === "veo3" ||
                 provider === "imagen" ||
@@ -118,6 +140,7 @@ router.post("/:provider", requireApiKey, async (req, res) => {
         );
 
         if (aiResponseData.data?.success) {
+          console.log("🔍 aiResponseData", aiResponseData.data);
           let contentToSend;
           if (
             aiResponseData.data.provider === "imagen" ||
@@ -132,12 +155,12 @@ router.post("/:provider", requireApiKey, async (req, res) => {
           ) {
             contentToSend = aiResponseData.data.videoUrl;
           } else if (
-            aiResponse.data.provider === "sora" &&
-            aiResponse.data.videoUrl &&
-            Array.isArray(aiResponse.data.videoUrl) &&
-            aiResponse.data.videoUrl.length > 0
+            aiResponseData.data.provider === "sora" &&
+            aiResponseData.data.videoUrl &&
+            Array.isArray(aiResponseData.data.videoUrl) &&
+            aiResponseData.data.videoUrl.length > 0
           ) {
-            contentToSend = aiResponse.data.videoUrl.join("\n");
+            contentToSend = aiResponseData.data.videoUrl.join("\n");
           } else {
             contentToSend =
               aiResponseData.data.content ||

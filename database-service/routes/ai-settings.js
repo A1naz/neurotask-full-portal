@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { requireApiKey } = require('../middleware/auth');
 const AISettings = require('../models/AISettings');
+const { aiModelsConfig } = require('../../src/config/ai-models');
 
 // Получить AI настройки пользователя
 router.get('/:userId', requireApiKey, async (req, res) => {
@@ -24,17 +25,10 @@ router.get('/:userId', requireApiKey, async (req, res) => {
       await aiSettings.save();
     }
     
-    const aiProviders = {
-      openai: aiSettings.activeProviders.includes('openai'),
-      gemini: aiSettings.activeProviders.includes('gemini'),
-      xai: aiSettings.activeProviders.includes('xai'),
-      yandexgpt: aiSettings.activeProviders.includes('yandexgpt'),
-      gigachat: aiSettings.activeProviders.includes('gigachat'),
-      anthropic: aiSettings.activeProviders.includes('anthropic'),
-      deepseek: aiSettings.activeProviders.includes('deepseek'),
-      veo3: aiSettings.activeProviders.includes('veo3'),
-      imagen: aiSettings.activeProviders.includes('imagen')
-    };
+    const aiProviders = {};
+    Object.keys(aiModelsConfig).forEach(providerKey => {
+      aiProviders[providerKey] = aiSettings.activeProviders.includes(providerKey);
+    });
 
     res.json({
       success: true,

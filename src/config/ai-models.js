@@ -68,4 +68,9 @@ export const aiModelsConfig = {
     models: ["dall-e-3"],
     type: 'image',
   },
+  sora: {
+    label: "OpenAI Sora",
+    models: ["sora"],
+    type: 'image',
+  },
 };

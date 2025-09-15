@@ -234,12 +234,12 @@ const AISettings = () => {
       isDisabled: true
     },
     {
-      key: 'leonardo',
-      name: 'Leonardo AI',
-      description: 'Создание концепт-арта',
+      key: 'sora',
+      name: 'OpenAI Sora',
+      description: 'Революционная модель для создания реалистичных фото и видео',
       icon: '🎪',
       color: 'bg-red-100 text-red-800',
-      isDisabled: true
+      isDisabled: false
     },
     {
       key: 'imagen',

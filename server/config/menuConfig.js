@@ -171,7 +171,7 @@ const allMenuItems = [
   {
     id: "token-history",
     label: "История токенов",
-    iconName: "Cpu",
+    iconName: "History",
     path: "/assistant/token-history",
     description: "История пополнений и списаний токенов",
     locations: ["profile"],

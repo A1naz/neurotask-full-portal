@@ -51,6 +51,9 @@ import { useTokenBalance } from "@/contexts/TokenBalanceContext";
 import { cn } from "@/lib/utils";
 import ProfileDropdown from "./ProfileDropdown"; // Импортируем новый компонент
 import ChatHistoryMenu from './ChatHistoryMenu';
+import ContactUsModal from './ContactUsModal'; // Импортируем модальное окно
+import ChatHistoryModal from './ChatHistoryModal'; // Импортируем модальное окно истории
+import ReferralModal from './ReferralModal'; // Импортируем реферальное модальное окно
 
 // Маппинг имен иконок на компоненты иконок
 const iconComponents = {
@@ -81,6 +84,9 @@ const iconComponents = {
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isContactModalOpen, setContactModalOpen] = useState(false);
+  const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
+  const [isReferralModalOpen, setReferralModalOpen] = useState(false);
   // Remove local menu state
   // const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
   // const [profileMenuItems, setProfileMenuItems] = useState([]);
@@ -471,7 +477,7 @@ const Layout = ({ children }) => {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 overflow-y-auto">
             {renderMenuItems()}
-            <ChatHistoryMenu />
+            <ChatHistoryMenu onShowHistory={() => setHistoryModalOpen(true)} />
           </nav>
 
           {/* User Profile Section & Collapse button */}
@@ -493,6 +499,8 @@ const Layout = ({ children }) => {
                   isLoading={isLoadingMenu}
                   error={menuError}
                   onLogout={handleLogout}
+                  onContactUsClick={() => setContactModalOpen(true)}
+                  onReferralClick={() => setReferralModalOpen(true)}
                   trigger={
                     <Button
                       variant="ghost"
@@ -556,7 +564,19 @@ const Layout = ({ children }) => {
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="flex-1"></div>
+          <div className="flex-1 flex justify-center items-center">
+            {user && user.isTeamOwner && (!user.tariffId || user.tariffId.name === 'Бесплатно') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/assistant/plans")}
+                className="border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-1.5 shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                Перейти на Plus
+                <Info className="h-4 w-4 text-gray-500" />
+              </Button>
+            )}
+          </div>
 
           {/* Quick Actions */}
           <div className="hidden lg:flex items-center gap-2">
@@ -570,7 +590,7 @@ const Layout = ({ children }) => {
               <span className="text-sm font-medium text-gray-700">
                 {tokenBalance.toLocaleString()}
               </span>
-              <span className="text-xs text-gray-500">токенов</span>
+             
             </Button>
 
             <ProfileDropdown
@@ -581,6 +601,8 @@ const Layout = ({ children }) => {
               isLoading={isLoadingMenu}
               error={menuError}
               onLogout={handleLogout}
+              onContactUsClick={() => setContactModalOpen(true)}
+              onReferralClick={() => setReferralModalOpen(true)}
               trigger={
                 <Button
                   variant="ghost"
@@ -598,32 +620,12 @@ const Layout = ({ children }) => {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
-          {/* Upgrade Plan Notification Bar */}
-          {user && user.isTeamOwner && (!user.tariffId || user.tariffId.name === 'Бесплатно') && (
-            <div className="px-4 py-3">
-              <div className="flex items-center text-sm text-gray-600">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <div className="mx-4 flex-shrink-0">
-                  <div className="text-center border border-gray-200 rounded-lg shadow-sm bg-white px-4 py-2">
-                    <div className="flex items-center justify-center">
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 text-purple-600 hover:text-purple-700 font-semibold text-xs"
-                        onClick={() => navigate("/assistant/plans")}
-                      >
-                        Перейти на Plus
-                      </Button>
-                      <Info className="h-4 w-4 ml-1.5 text-gray-500" />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-grow border-t border-gray-200"></div>
-              </div>
-            </div>
-          )}
           {children}
         </main>
       </div>
+      <ContactUsModal isOpen={isContactModalOpen} onClose={() => setContactModalOpen(false)} />
+      <ChatHistoryModal isOpen={isHistoryModalOpen} onClose={() => setHistoryModalOpen(false)} />
+      <ReferralModal isOpen={isReferralModalOpen} onClose={() => setReferralModalOpen(false)} />
     </div>
   );
 };

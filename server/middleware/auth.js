@@ -7,6 +7,7 @@ const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils');
  * Middleware для проверки аутентификации пользователя
  */
 const requireAuth = (req, res, next) => {  
+  
   if (req.session.userId) {
     next();
   } else {

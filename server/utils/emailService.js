@@ -225,8 +225,59 @@ const sendPasswordResetEmail = async (email, username, code) => {
   }
 };
 
+// Отправка письма с формы "Связаться с нами"
+const sendContactUsEmail = async (userEmail, username, message) => {
+  try {
+    const transporter = getTransporter();
+    const toEmail = process.env.CONTACT_US_EMAIL || 'mr_flane@mail.ru';
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'info@neurotask.ru',
+      to: toEmail, // Ваша почта
+      subject: `Новое сообщение от ${username} (${userEmail}) - Neurotask`,
+      replyTo: userEmail,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">Новое сообщение - Neurotask</h1>
+          </div>
+          <div style="padding: 30px; background: #f9f9f9;">
+            <h2 style="color: #333; margin-bottom: 20px;">Информация об отправителе</h2>
+            <p style="color: #666; line-height: 1.6;"><strong>Пользователь:</strong> ${username}</p>
+            <p style="color: #666; line-height: 1.6;"><strong>Email:</strong> <a href="mailto:${userEmail}">${userEmail}</a></p>
+            <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+            <h2 style="color: #333; margin-bottom: 20px;">Текст сообщения</h2>
+            <div style="background: #ffffff; border-radius: 8px; padding: 20px; border: 1px solid #e0e0e0;">
+              <p style="color: #333; line-height: 1.6; white-space: pre-wrap; margin: 0;">${message}</p>
+            </div>
+          </div>
+          <div style="margin-top: 30px; padding: 20px; border-top: 1px solid #eee; background: #f0f0f0;">
+            <p style="color: #999; font-size: 12px; margin: 0; text-align: center;">
+              Это письмо было отправлено с формы "Связаться с нами" на сайте Neurotask.
+            </p>
+          </div>
+        </div>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log('📧 Contact us email sent successfully:');
+    console.log('  • From User:', userEmail);
+    console.log('  • Message ID:', info.messageId);
+
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Contact us email failed:');
+    console.error('  • From User:', userEmail);
+    console.error('  • Error:', error.message);
+
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
   resendVerificationEmail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendContactUsEmail,
 }; 

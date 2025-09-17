@@ -216,6 +216,7 @@ app.use('/api/multi-chat', require('./routes/multi-chat'));
 app.use('/api/menu', require('./routes/menu')); // Подключаем новый роут
 app.use('/api/permissions', require('./routes/permissions'));
 app.use('/api/provider-order', require('./routes/provider-order'));
+app.use('/api/contact-us', require('./routes/contact')); // Добавляем новый роут
 
 // Прокси для эндпоинта именования чатов
 app.use('/api/chat-naming', async (req, res) => {

@@ -37,10 +37,12 @@ const ProviderCard = React.forwardRef(({
   onSendMessage,
   onImageUpload,
   balance,
+  setMainError,
   ...props
 }, ref) => {
   const [showHistory, setShowHistory] = useState(true);
   const [individualMessage, setIndividualMessage] = useState('');
+  const [localError, setLocalError] = useState('');
   const [showInputField, setShowInputField] = useState(false);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -229,9 +231,15 @@ const ProviderCard = React.forwardRef(({
           }
         }
 
-        await onSendMessage(provider, individualMessage.trim(), imageUrlToUse);
-        setIndividualMessage('');
-        handleClearImage();
+        const result = await onSendMessage(provider, individualMessage.trim(), imageUrlToUse);
+        
+        if (result && result.status === 'error') {
+          setLocalError(result.error);
+        } else {
+          setIndividualMessage('');
+          handleClearImage();
+          setLocalError(''); // Очищаем ошибку при успешной отправке
+        }
       } finally {
         setIsSending(false);
       }
@@ -475,6 +483,12 @@ const ProviderCard = React.forwardRef(({
               <p className="text-sm">Начните новый чат или выберите существующий.</p>
             </div>
           )}
+          {localError && (
+            <Alert variant="destructive" className="mt-2 p-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">{localError}</AlertDescription>
+            </Alert>
+          )}
         </div>
         {response?.status === 'loading' && (
           <div className="flex items-center gap-2 text-gray-600 py-1 mt-auto flex-shrink-0">
@@ -591,7 +605,10 @@ const ProviderCard = React.forwardRef(({
                 ref={inputRef}
                 placeholder={balance < 1 ? 'Недостаточно токенов. Пополните баланс.' : `Запрос для ${getProviderName(provider)}...`}
                 value={individualMessage}
-                onChange={(e) => setIndividualMessage(e.target.value)}
+                onChange={(e) => {
+                  setIndividualMessage(e.target.value);
+                  setLocalError(''); // Очищаем ошибку при вводе
+                }}
                 onKeyPress={handleKeyPress}
                 onBlur={(e) => {
                   if (

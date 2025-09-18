@@ -311,7 +311,7 @@ const API_BASE = (() => {
 
       if (response.ok) {
         const userData = await response.json();
-        setUser(userData.user);
+        setUser(userData.user); // Store the full user object
         setIsAuthenticated(true);
         // Get CSRF token after successful authentication
         await getCsrfToken();
@@ -345,7 +345,7 @@ const API_BASE = (() => {
 
       if (response.ok) {
         const loggedInUser = data.user;
-        setUser(loggedInUser);
+        setUser(loggedInUser); // Store the full user object
         setIsAuthenticated(true);
         debugCookies(); // Debug cookies after successful login
         

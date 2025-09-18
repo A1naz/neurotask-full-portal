@@ -183,6 +183,33 @@ router.get(
   }
 );
 
+// Новый роут для проверки лимитов (перемещен ВЫШЕ /:provider)
+router.post(
+  '/check-limit',
+  requireAuth,
+  requirePermission('multi-chat'),
+  async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const { chatId, provider } = req.body;
+
+      const response = await axios.post(
+        `${DATABASE_SERVICE_URL}/api/limits/check-usage`,
+        { userId, chatId, provider },
+        {
+          headers: { 'x-api-key': DATABASE_SERVICE_API_KEY },
+        }
+      );
+
+      res.status(response.status).json(response.data);
+    } catch (error) {
+      // Не блокируем запрос, если сервис лимитов недоступен, но логируем ошибку
+      console.error('Ошибка проксирования проверки лимитов:', error.message);
+      res.status(500).json({ success: false, message: 'Ошибка сервера при проверке лимитов' });
+    }
+  }
+);
+
 // Отправить сообщение конкретному провайдеру
 router.post(
   "/:provider",
@@ -235,6 +262,26 @@ router.post(
           success: false,
           message: "Ошибка проверки баланса",
         });
+      }
+
+      //  चेक лимитов перед отправкой
+      try {
+        const limitCheckResponse = await axios.post(
+          `${DATABASE_SERVICE_URL}/api/limits/check-usage`,
+          { userId, chatId },
+          { headers: { 'x-api-key': DATABASE_SERVICE_API_KEY } }
+        );
+
+        if (limitCheckResponse.data?.limitExceeded) {
+          return res.status(429).json({
+            success: false,
+            message: limitCheckResponse.data.message || 'Достигнут лимит сообщений для вашего тарифа.',
+            error: 'MESSAGE_LIMIT_EXCEEDED',
+          });
+        }
+      } catch (limitError) {
+        // Не блокируем запрос, если сервис лимитов недоступен, но логируем ошибку
+        console.error('Ошибка проверки лимитов:', limitError.message);
       }
 
       // Отправляем сообщение в database-service

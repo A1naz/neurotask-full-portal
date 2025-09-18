@@ -29,6 +29,18 @@ const TariffPlanSchema = new mongoose.Schema({
     type: String,
     default: 'USD / месяц',
   },
+  requestLimit: {
+    type: Number,
+    default: 5,
+  },
+  requestLimitDetails: {
+    type: String,
+    default: 'Безлимитные запросы',
+  },
+  LLMLimit: {
+    type: Number,
+    default: 2,
+  },
   description: {
     type: String,
     required: true,

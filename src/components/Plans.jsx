@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,8 +18,12 @@ import {
   Briefcase,
   Layers,
   Star,
-  Users
+  Users,
+  CheckCircle,
+  Zap,
+  BrainCircuit
 } from 'lucide-react';
+import EnterpriseInquiryModal from './EnterpriseInquiryModal'; // Импортируем модальное окно
 
 const iconMapping = {
   'Доступ к GPT-5': Sparkles,
@@ -53,8 +57,16 @@ const iconMapping = {
   'Мультимодальное создание': Layers,
 };
 
+const featureIcons = {
+  'Все возможности Pro': CheckCircle,
+  'Неограниченное количество пользователей': Zap,
+  'Приоритетная поддержка': BrainCircuit,
+};
+
 
 const Plans = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false); // Состояние для модального окна
+
   const personalPlans = [
     {
       name: 'Бесплатно',
@@ -116,19 +128,14 @@ const Plans = () => {
 
   const businessPlan = {
     name: 'Business',
-    baseId: 'business',
-    price: '$25',
-    priceDetails: 'USD / месяц',
-    description: 'Улучшите работу своей команды с помощью безопасной рабочей области для совместной работы',
-    buttonText: 'Перейти на Business',
+    price: 'Индивидуально',
+    priceDetails: '',
+    description: 'Для организаций, которым требуется безопасное и масштабируемое развертывание ИИ',
+    buttonText: 'Перейти', // Измененный текст кнопки
     features: [
-      { text: 'Все в Plus и даже больше', description: 'неограниченное количество сообщений GPT-5, широкий доступ к мышлению GPT-5, доступ к GPT-5 pro и дополнительные кредиты, которые можно масштабировать вместе с вашей командой.', iconKey: 'Все в Plus и даже больше' },
-      { text: 'Подключите знания своей компании', description: 'Google Диск, SharePoint, Dropbox, GitHub, Outlook и пользовательские интеграции', iconKey: 'Подключите знания своей компании' },
-      { text: 'Безопасность, необходимая для бизнеса', description: 'SSO SAML, MFA, SOC 2 Type 2, шифрование при передаче и хранении, данные исключены из обучения', iconKey: 'Безопасность, необходимая для бизнеса' },
-      { text: 'Режим записок', description: 'записывайте собрания и голосовые заметки на рабочем столе macOS, а затем ищите и используйте их расшифровки в любом чате', iconKey: 'Режим записок' },
-      { text: 'Бизнес-функции', description: 'такие как проекты, задачи, загрузка файлов и настраиваемые GPT для рабочей области', iconKey: 'Бизнес-функции' },
-      { text: 'Встроенные агенты', description: 'глубокое исследование, агент ChatGPT и Codex могут анализировать ваши документы, инструменты и кодовые базы, чтобы сэкономить ваше время', iconKey: 'Встроенные агенты' },
-      { text: 'Мультимодальное создание', description: 'создавайте видео с помощью Sora, генерируйте изображения, создавайте холсты, запускайте расширенный анализ данных и выполняйте встроенный код', iconKey: 'Мультимодальное создание' },
+      { text: 'Все возможности Pro', iconName: 'CheckCircle' },
+      { text: 'Неограниченное количество пользователей', iconName: 'Zap' },
+      { text: 'Приоритетная поддержка', iconName: 'Briefcase' }
     ],
   };
 
@@ -164,6 +171,20 @@ const Plans = () => {
         }
     };
 
+    const handleButtonClick = () => {
+      if (isBusiness) {
+        setIsModalOpen(true);
+      } else {
+        // Логика для других кнопок (например, переход к оплате)
+        console.log(`Redirecting to payment for ${plan.name}`);
+      }
+    };
+    
+    const getIcon = (iconName) => {
+      const IconComponent = featureIcons[iconName] || CheckCircle;
+      return <IconComponent className="h-5 w-5 text-gray-600 mr-3 shrink-0 mt-0.5" />;
+    };
+
     return (
       <Card 
         className={`flex flex-col h-full rounded-2xl ${
@@ -186,7 +207,10 @@ const Plans = () => {
           <p className="mt-4 text-gray-600 h-10">{plan.description}</p>
         </CardHeader>
         <CardContent className="flex flex-col flex-grow px-8 pb-8">
-          <Button className={`w-full mb-6 rounded-lg h-10 ${getButtonClass()}`}>
+          <Button 
+            className={`w-full mb-6 rounded-lg h-10 ${getButtonClass()}`}
+            onClick={handleButtonClick}
+          >
             {plan.buttonText}
           </Button>
           <ul className="space-y-4 text-sm">
@@ -194,10 +218,9 @@ const Plans = () => {
               const iconColor = getIconColor();
 
               if (isBusiness) {
-                const IconComponent = iconMapping[feature.iconKey] || CheckCircle2;
                 return (
                   <li key={index} className="flex items-start">
-                    <IconComponent className={`h-5 w-5 ${iconColor} mr-3 shrink-0 mt-0.5`} />
+                    {getIcon(feature.iconName)}
                     <div>
                       <span className="font-semibold">{feature.text}:</span>
                       <span className="text-gray-600 ml-1">{feature.description}</span>
@@ -256,6 +279,7 @@ const Plans = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <EnterpriseInquiryModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 };

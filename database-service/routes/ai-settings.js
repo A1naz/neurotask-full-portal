@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { requireApiKey } = require('../middleware/auth');
 const AISettings = require('../models/AISettings');
+const User = require('../models/User'); // Import User model
+const TariffPlan = require('../models/TariffPlan'); // Import TariffPlan model
 const { aiModelsConfig } = require('../../src/config/ai-models');
 
 // Получить AI настройки пользователя
@@ -59,6 +61,28 @@ router.put('/:userId', requireApiKey, async (req, res) => {
   try {
     const { userId } = req.params;
     const { aiProviders, selectedModels } = req.body;
+    
+    // Проверка лимита LLM
+    if (aiProviders) {
+      const user = await User.findById(userId);
+      let llmLimit = 2; // Default limit
+
+      if (user && user.tariffId) {
+        const tariffPlan = await TariffPlan.findById(user.tariffId);
+        if (tariffPlan) {
+          llmLimit = tariffPlan.LLMLimit;
+        }
+      }
+      
+      const activeProvidersCount = Object.values(aiProviders).filter(isActive => isActive).length;
+
+      if (activeProvidersCount > llmLimit) {
+        return res.status(403).json({
+          success: false,
+          message: `Превышен лимит на количество одновременно включенных LLM для вашего тарифа (${llmLimit})`
+        });
+      }
+    }
     
     let aiSettings = await AISettings.findByUserId(userId);
     

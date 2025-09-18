@@ -18,6 +18,8 @@ const aiSettingsRoutes = require('./routes/ai-settings');
 const projectSettingsRoutes = require('./routes/project-settings');
 const selectedProvidersRoutes = require('./routes/selected-providers');
 const providerOrderRoutes = require('./routes/provider-order');
+const tasksRoutes = require('./routes/tasks');
+const contactRoutes = require('./routes/contact'); // Импортируем новый роут
 const TariffPlan = require('./models/TariffPlan');
 
 
@@ -178,7 +180,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/teams', require('./routes/teams'));
 
 // Task Management Endpoints
-app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/tasks', tasksRoutes);
 
 // Notification Management Endpoints
 app.use('/api/notifications', require('./routes/notifications'));
@@ -204,6 +206,12 @@ app.use('/api/ai-keys', require('./routes/ai-keys'));
 // Provider Order Endpoints
 app.use('/api/provider-order', providerOrderRoutes);
 
+// Limits Endpoints
+app.use('/api/limits', require('./routes/limits'));
+
+// Contact Endpoints
+app.use('/api/contact', contactRoutes);
+
 // Обработка ошибок
 app.use((err, req, res, next) => {
   res.status(500).json({ 
@@ -219,6 +227,9 @@ app.use('*', (req, res) => {
     message: 'Эндпоинт не найден' 
   });
 });
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // Запуск сервера
 app.listen(PORT, () => {

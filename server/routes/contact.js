@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { sendContactUsEmail } = require('../utils/emailService');
+const axios = require('axios'); // Added axios for enterprise-inquiry
+const { DATABASE_SERVICE_URL, DATABASE_SERVICE_API_KEY } = require('../utils'); // Исправлено
 
 // POST /api/contact-us
-router.post('/', requireAuth, async (req, res) => {
+router.post('/contact-us', requireAuth, async (req, res) => {
  
   try {
     const { message } = req.body;
@@ -28,6 +30,28 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Ошибка на сервере при отправке сообщения:', error);
     res.status(5.0).json({ success: false, message: 'Внутренняя ошибка сервера.' });
+  }
+});
+
+// Новый роут для запросов от предприятий
+router.post('/enterprise-inquiry', async (req, res) => {
+  try {
+    const inquiryData = req.body;
+    
+    // Перенаправляем запрос в database-service
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/contact/enterprise-inquiry`, inquiryData, {
+      headers: { 'Authorization': `Bearer ${DATABASE_SERVICE_API_KEY}` }
+    });
+    
+    res.status(response.status).json(response.data);
+    
+  } catch (error) {
+    const status = error.response ? error.response.status : 500;
+    const message = error.response ? error.response.data.message : 'Ошибка отправки запроса';
+    res.status(status).json({
+      success: false,
+      message
+    });
   }
 });
 

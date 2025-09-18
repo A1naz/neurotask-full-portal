@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import NotificationPopup from './NotificationPopup'; // Импорт NotificationPopup
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -78,6 +79,7 @@ const MultiChat = () => {
   const [activeProviders, setActiveProviders] = useState([]);
   const [error, setError] = useState('');
   const [activeId, setActiveId] = useState(null);
+  const [notification, setNotification] = useState(''); // Стейт для NotificationPopup
 
   // State для категорий провайдеров
   const [chatProviders, setChatProviders] = useState([]);
@@ -438,20 +440,46 @@ const MultiChat = () => {
 
   const sendToProvider = async (provider, messageToSend, imageUrl = null) => {
     try {
+      // Moved chat ID generation to the top to ensure it exists for the limit check.
+      let finalChatId = currentChatId;
+      if (!finalChatId) {
+        finalChatId = uuidv4();
+        selectChat(finalChatId); // Update chatId in the context
+      }
+
+      // Check limits before sending
+      const limitCheckResponse = await fetch(`${API_BASE}/api/multi-chat/check-limit`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
+        body: JSON.stringify({
+          userId: user._id,
+          chatId: finalChatId, // Use the guaranteed finalChatId
+          provider: provider,
+        }),
+      });
+
+      if (limitCheckResponse.ok) {
+        const limitData = await limitCheckResponse.json();
+        if (limitData.limitExceeded) {
+          return { status: 'error', content: '', error: limitData.message };
+        }
+      } else {
+        // If the limit check fails, log the error but continue sending the message
+        const errorText = await limitCheckResponse.text();
+        console.error(`Error checking limits for ${provider}:`, errorText);
+      }
+
       const systemPrompt = useCustomPrompt ? customSystemPrompt : defaultSystemPrompt;
       
       if (!csrfToken || !user?._id) {
         return { status: 'error', content: '', error: 'Ошибка безопасности: CSRF токен или пользователь не найден' };
       }
 
-      // 🔍 FIX: Убедимся, что chatId существует перед отправкой
-      let finalChatId = currentChatId;
-      if (!finalChatId) {
-        finalChatId = uuidv4();
-        selectChat(finalChatId); // Обновляем chatId в контексте
-      }
-
-      // Если это первое сообщение в чате, отправляем запрос на создание названия
+      // If it's the first message in the chat, send a request to generate a title
       if (isFirstMessage && finalChatId) {
         try {
           await fetch(`${API_BASE}/api/chat-naming/generate-name`, {
@@ -507,6 +535,8 @@ const MultiChat = () => {
         const errorData = await response.json();
         if (response.status === 402 && errorData.error === 'INSUFFICIENT_BALANCE') {
           return { status: 'error', content: '', error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.', insufficientBalance: true, currentBalance: errorData.currentBalance, requiredTokens: errorData.requiredTokens };
+        } else if (response.status === 429 && errorData.error === 'MESSAGE_LIMIT_EXCEEDED') {
+          return { status: 'error', content: '', error: errorData.message };
         } else {
           return { status: 'error', content: '', error: errorData.message || 'Ошибка запроса' };
         }
@@ -1014,6 +1044,15 @@ const MultiChat = () => {
     }
   };
 
+  const handleCategoryChange = (newCategory) => {
+    if (newCategory === 'mix' && user?.tariffId?.name === 'Бесплатно') {
+      setNotification('Режим "Микс" недоступен на бесплатном тарифе.');
+      setTimeout(() => setNotification(''), 3000); // Скрываем уведомление через 3 секунды
+      return;
+    }
+    setSelectedCategory(newCategory);
+  };
+
   const handleImageUpload = async (provider, imageFile) => {
     if (!imageFile) return;
 
@@ -1120,6 +1159,7 @@ const MultiChat = () => {
 
   return (
     <div className="flex flex-col h-full p-2 sm:p-6 relative">
+      <NotificationPopup message={notification} onClose={() => setNotification('')} />
       {/* Боковая панель для истории чатов */}
       <div
         className={cn(
@@ -1278,11 +1318,11 @@ const MultiChat = () => {
                       {!isHeaderCollapsed && (
               <CardContent className="pt-0">
                 <div className="flex flex-wrap items-center justify-between gap-4 -mt-6">
-                  <Tabs defaultValue="chat" className="w-auto" value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <Tabs defaultValue="chat" className="w-auto" value={selectedCategory} onValueChange={handleCategoryChange}>
                     <TabsList>
                       <TabsTrigger value="chat" className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4" />
-                        Текстовые
+                        Текст
                       </TabsTrigger>
                       <TabsTrigger value="video" className="flex items-center gap-2">
                         <Video className="w-4 h-4" />
@@ -1357,7 +1397,7 @@ const MultiChat = () => {
             )}
        </Card>
 
-       <Tabs defaultValue="chat" className="w-full mb-6" value={selectedCategory} onValueChange={setSelectedCategory}>
+       <Tabs defaultValue="chat" className="w-full mb-6" value={selectedCategory} onValueChange={handleCategoryChange}>
          {/* Контент вкладок */}
          <TabsContent value="chat" className="mt-2">
            <Label className="text-sm font-medium mb-2 block">Выберите основные провайдеры:</Label>
@@ -1575,7 +1615,6 @@ const MultiChat = () => {
                           onSendMessage={sendToProvider} // Передаем функцию
                           onImageUpload={handleProviderImageUpload} // Передаем функцию
                           balance={balance} // Передаем баланс
-                    
                         />
                       )) : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
                         <SortableProviderCard 

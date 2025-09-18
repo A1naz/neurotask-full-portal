@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import NotificationPopup from './NotificationPopup'; // Импортируем новый компонент
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,7 @@ const AISettings = () => {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState(''); // Стейт для нового уведомления
 
   // Динамически создаем начальное состояние для aiProviders
   const [aiProviders, setAiProviders] = useState(() => {
@@ -259,7 +261,7 @@ const AISettings = () => {
 
   const loadAISettings = async () => {
     if (!csrfToken) {
-      setError('Ошибка: CSRF токен не найден');
+      setNotification('Ошибка: CSRF токен не найден');
       setLoading(false);
       return;
     }
@@ -283,10 +285,10 @@ const AISettings = () => {
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        setError(`Ошибка загрузки: ${errorData.message || response.statusText}`);
+        setNotification(`Ошибка загрузки: ${errorData.message || response.statusText}`);
         }
     } catch (error) {
-      setError('Ошибка загрузки настроек AI');
+      setNotification('Ошибка загрузки настроек AI');
     } finally {
       setLoading(false);
     }
@@ -294,21 +296,20 @@ const AISettings = () => {
 
   const handleToggleProvider = async (providerKey, enabled) => {
     if (!csrfToken) {
-      setError('Ошибка: CSRF токен не найден');
+      setNotification('Ошибка: CSRF токен не найден');
       return;
     }
     
     // Проверяем, не отключен ли провайдер
     const provider = providersList.find(p => p.key === providerKey);
     if (provider?.isDisabled) {
-      setError('Этот провайдер временно недоступен');
-      setTimeout(() => setError(''), 3000);
+      setNotification('Этот провайдер временно недоступен');
       return;
     }
 
     setSaving(true);
     setSuccess('');
-    setError('');
+    setNotification(''); // Сбрасываем уведомление
 
     try {
       const updatedProviders = {
@@ -348,10 +349,14 @@ const AISettings = () => {
         setTimeout(() => setSuccess(''), 3000);
       } else {
         const errorData = await response.json();
-        setError(errorData.message || 'Ошибка сохранения настроек');
+        setNotification(errorData.message || 'Ошибка сохранения настроек');
+        // Возвращаем переключатель в исходное состояние
+        setAiProviders(aiProviders);
       }
     } catch (error) {
-      setError('Ошибка при сохранении настроек');
+      setNotification('Ошибка при сохранении настроек');
+      // Возвращаем переключатель в исходное состояние
+      setAiProviders(aiProviders);
     } finally {
       setSaving(false);
     }
@@ -359,13 +364,13 @@ const AISettings = () => {
 
   const handleModelChange = async (providerKey, model) => {
     if (!csrfToken) {
-      setError('Ошибка: CSRF токен не найден');
+      setNotification('Ошибка: CSRF токен не найден');
       return;
     }
     
     setSaving(true);
     setSuccess('');
-    setError('');
+    setNotification(''); // Сбрасываем уведомление
 
     try {
       const updatedModels = {
@@ -392,10 +397,10 @@ const AISettings = () => {
         setTimeout(() => setSuccess(''), 3000);
       } else {
         const errorData = await response.json();
-        setError(errorData.message || 'Ошибка сохранения настроек');
+        setNotification(errorData.message || 'Ошибка сохранения настроек');
       }
     } catch (error) {
-      setError('Ошибка при сохранении настроек');
+      setNotification('Ошибка при сохранении настроек');
     } finally {
       setSaving(false);
     }
@@ -500,19 +505,9 @@ const AISettings = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Загрузка настроек AI...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
+      <NotificationPopup message={notification} onClose={() => setNotification('')} />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -526,132 +521,138 @@ const AISettings = () => {
           </p>
 
           {success && (
-            <Alert className="mb-4">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>{success}</AlertDescription>
+            <Alert variant="default" className="mb-4 bg-green-100 border-green-300">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                {success}
+              </AlertDescription>
             </Alert>
           )}
 
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+          {loading && (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-2">Загрузка настроек...</p>
+            </div>
           )}
 
-          {/* Summary Card */}
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Bot className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold text-blue-900">Общий статус AI</h3>
-                    <p className="text-sm text-blue-700">
-                      Активно: {getActiveProvidersCount()} из {getAvailableProvidersCount()} доступных сервисов
-                    </p>
+          {!loading && (
+            <>
+              {/* Summary Card */}
+              <Card className="mb-6 bg-blue-50 border-blue-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Bot className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <h3 className="font-semibold text-blue-900">Общий статус AI</h3>
+                        <p className="text-sm text-blue-700">
+                          Активно: {getActiveProvidersCount()} из {getAvailableProvidersCount()} доступных сервисов
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-900">
+                        {getActiveProvidersCount()}
+                      </div>
+                      <div className="text-xs text-blue-600">активных</div>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-900">
-                    {getActiveProvidersCount()}
+                </CardContent>
+              </Card>
+
+              {/* AI Models Tabs */}
+              <Tabs defaultValue="chat" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="chat" className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Текст
+                  </TabsTrigger>
+                  <TabsTrigger value="video" className="flex items-center gap-2">
+                    <Video className="w-4 h-4" />
+                    Видео
+                  </TabsTrigger>
+                  <TabsTrigger value="audio" className="flex items-center gap-2">
+                    <Music className="w-4 h-4" />
+                    Аудио
+                  </TabsTrigger>
+                  <TabsTrigger value="images" className="flex items-center gap-2">
+                    <Image className="w-4 h-4" />
+                    Изображения
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="chat" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <MessageSquare className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold">Текстовые AI модели</h3>
+                    </div>
+                    {renderModelsGrid(chatModels)}
                   </div>
-                  <div className="text-xs text-blue-600">активных</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </TabsContent>
 
-          {/* AI Models Tabs */}
-          <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="chat" className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
-                Текстовые
-              </TabsTrigger>
-              <TabsTrigger value="video" className="flex items-center gap-2">
-                <Video className="w-4 h-4" />
-                Видео
-              </TabsTrigger>
-              <TabsTrigger value="audio" className="flex items-center gap-2">
-                <Music className="w-4 h-4" />
-                Аудио
-              </TabsTrigger>
-              <TabsTrigger value="images" className="flex items-center gap-2">
-                <Image className="w-4 h-4" />
-                Изображения
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="chat" className="mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold">Текстовые AI модели</h3>
-                </div>
-                {renderModelsGrid(chatModels)}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="video" className="mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Video className="w-5 h-5 text-purple-600" />
-                  <h3 className="text-lg font-semibold">Видео модели</h3>
-                </div>
-                {renderModelsGrid(videoModels)}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="audio" className="mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Music className="w-5 h-5 text-orange-600" />
-                  <h3 className="text-lg font-semibold">Аудио модели</h3>
-                </div>
-                {renderModelsGrid(audioModels)}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="images" className="mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Image className="w-5 h-5 text-green-600" />
-                  <h3 className="text-lg font-semibold">Модели генерации изображений</h3>
-                </div>
-                {renderModelsGrid(imageModels)}
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Information Card */}
-          <Card className="mt-6 bg-gray-50 border-gray-200">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Settings className="w-5 h-5 text-gray-600 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">
-                    О настройках AI
-                  </h3>
-                  <div className="text-sm text-gray-700 space-y-2">
-                    <p>
-                      Каждый AI сервис можно включать и выключать независимо:
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>Включенные сервисы будут доступны для использования</li>
-                      <li>Выключенные сервисы не будут использоваться</li>
-                      <li>Настройки сохраняются в вашем профиле</li>
-                      <li>API ключи настраиваются администратором глобально</li>
-                      <li>Изменения применяются мгновенно</li>
-                    </ul>
-                    <p className="mt-3 text-gray-600">
-                      Рекомендуется включать только те сервисы, которые вы планируете использовать.
-                    </p>
+                <TabsContent value="video" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Video className="w-5 h-5 text-purple-600" />
+                      <h3 className="text-lg font-semibold">Видео модели</h3>
+                    </div>
+                    {renderModelsGrid(videoModels)}
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </TabsContent>
+
+                <TabsContent value="audio" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Music className="w-5 h-5 text-orange-600" />
+                      <h3 className="text-lg font-semibold">Аудио модели</h3>
+                    </div>
+                    {renderModelsGrid(audioModels)}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="images" className="mt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Image className="w-5 h-5 text-green-600" />
+                      <h3 className="text-lg font-semibold">Модели генерации изображений</h3>
+                    </div>
+                    {renderModelsGrid(imageModels)}
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Information Card */}
+              <Card className="mt-6 bg-gray-50 border-gray-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <Settings className="w-5 h-5 text-gray-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">
+                        О настройках AI
+                      </h3>
+                      <div className="text-sm text-gray-700 space-y-2">
+                        <p>
+                          Каждый AI сервис можно включать и выключать независимо:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Включенные сервисы будут доступны для использования</li>
+                          <li>Выключенные сервисы не будут использоваться</li>
+                          <li>Настройки сохраняются в вашем профиле</li>
+                          <li>API ключи настраиваются администратором глобально</li>
+                          <li>Изменения применяются мгновенно</li>
+                        </ul>
+                        <p className="mt-3 text-gray-600">
+                          Рекомендуется включать только те сервисы, которые вы планируете использовать.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

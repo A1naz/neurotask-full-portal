@@ -290,7 +290,7 @@ router.post("/:userId/balance", requireApiKey, async (req, res) => {
 router.get("/:userId/transactions", requireApiKey, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { page = 1, limit = 20, type, period, startDate, endDate } = req.query;
+    const { page = 1, limit = 20, type, period, startDate, endDate, fetchAll } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({
@@ -355,18 +355,20 @@ router.get("/:userId/transactions", requireApiKey, async (req, res) => {
     }
 
 
-    const transactions = await TokenTransaction.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    const queryBuilder = TokenTransaction.find(query).sort({ createdAt: -1 });
 
+    if (fetchAll !== 'true') {
+      queryBuilder.limit(limit * 1).skip((page - 1) * limit);
+    }
+
+    const transactions = await queryBuilder;
     const total = await TokenTransaction.countDocuments(query);
 
     res.json({
       success: true,
       transactions,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      totalPages: fetchAll === 'true' ? 1 : Math.ceil(total / limit),
+      currentPage: fetchAll === 'true' ? 1 : page,
       total,
     });
   } catch (error) {

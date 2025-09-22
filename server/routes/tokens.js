@@ -28,9 +28,9 @@ router.get('/balance', requireAuth, async (req, res) => {
 router.get('/history', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-    const { page = 1, limit = 20, type = null, period, startDate, endDate } = req.query;
+    const { page = 1, limit = 20, type = null, period, startDate, endDate, fetchAll } = req.query;
     
-    const params = { page, limit, type, period, startDate, endDate };
+    const params = { page, limit, type, period, startDate, endDate, fetchAll };
     
     // Удаляем null/undefined параметры
     Object.keys(params).forEach(key => params[key] == null && delete params[key]);

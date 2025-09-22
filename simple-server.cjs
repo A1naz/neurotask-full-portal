@@ -192,8 +192,34 @@ app.get('/api/tokens/balance', requireAuth, (req, res) => {
 // Get token history
 app.get('/api/tokens/history', requireAuth, (req, res) => {
   const userId = req.session.userId;
-  const userHistory = tokenHistory.get(userId) || [];
-  res.json({ history: userHistory });
+  let userHistory = tokenHistory.get(userId) || [];
+
+  // Filtering logic from export functionality can be reused here if needed
+  const { period, startDate, endDate, type, fetchAll, page = 1, limit = 20 } = req.query;
+
+  // Simple filtering example (can be expanded)
+  if (type && type !== 'all') {
+    userHistory = userHistory.filter(t => t.type === type);
+  }
+
+  if (fetchAll === 'true') {
+    return res.json({ transactions: userHistory });
+  }
+
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const totalItems = userHistory.length;
+  const totalPages = Math.ceil(totalItems / limitNum);
+  const startIndex = (pageNum - 1) * limitNum;
+  const endIndex = pageNum * limitNum;
+  const paginatedHistory = userHistory.slice(startIndex, endIndex);
+
+  res.json({ 
+    transactions: paginatedHistory,
+    totalPages,
+    currentPage: pageNum,
+    totalItems
+  });
 });
 
 // Top up tokens

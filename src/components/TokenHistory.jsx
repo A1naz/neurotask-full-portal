@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTokenBalance } from '@/contexts/TokenBalanceContext'; // Import useTokenBalance
-import { Plus, Minus, History, Wallet, Calendar, Filter, TrendingUp, BarChart3 } from 'lucide-react';
+import { Plus, Minus, History, Wallet, Calendar, Filter, TrendingUp, BarChart3, Download } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
@@ -24,6 +24,9 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { exportToExcel } from '../utils/exportToExcel';
 
 const TokenHistory = () => {
   const location = useLocation();
@@ -43,6 +46,13 @@ const TokenHistory = () => {
     totalBonuses: 0
   });
   
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+  });
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [startDate, endDate] = dateRange;
+
   // Состояние для фильтров
   const [filters, setFilters] = useState({
     period: 'all', // all, today, week, month, custom
@@ -67,10 +77,61 @@ const TokenHistory = () => {
   }, [showTopUpForm]);
 
   useEffect(() => {
-    loadHistory();
-  }, [filters]); // Перезагружаем при изменении фильтров
+    loadHistory(1); // При изменении фильтров загружаем первую страницу
+  }, [filters]);
 
-  const loadHistory = async () => {
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters.period !== 'all') {
+        params.append('period', filters.period);
+      }
+      
+      if (filters.startDate) {
+        params.append('startDate', filters.startDate);
+      }
+      
+      if (filters.endDate) {
+        params.append('endDate', filters.endDate);
+      }
+      
+      if (filters.type && filters.type !== 'all') {
+        params.append('type', filters.type);
+      }
+      
+      params.append('fetchAll', 'true'); // Указываем, что нужно получить все записи
+
+      const response = await fetch(`${API_BASE}/api/tokens/history?${params}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch data for export');
+      }
+
+      const data = await response.json();
+      const transactions = data.transactions || [];
+
+      if (transactions.length === 0) {
+        alert("Нет данных для экспорта по выбранным фильтрам.");
+        return;
+      }
+
+      const exportStartDate = filters.startDate ? new Date(filters.startDate) : new Date(Math.min(...transactions.map(h => new Date(h.createdAt))));
+      const exportEndDate = filters.endDate ? new Date(filters.endDate) : new Date();
+      
+      exportToExcel(transactions, {
+          startDate: exportStartDate,
+          endDate: exportEndDate,
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Произошла ошибка при экспорте данных.');
+    }
+  };
+
+  const loadHistory = async (page = 1) => {
     setLoading(true);
     try {
       // Строим параметры запроса
@@ -91,6 +152,7 @@ const TokenHistory = () => {
       if (filters.type && filters.type !== 'all') {
         params.append('type', filters.type);
       }
+      params.append('page', page);
 
       const response = await fetch(`${API_BASE}/api/tokens/history?${params}`, {
         credentials: 'include',
@@ -99,6 +161,10 @@ const TokenHistory = () => {
       if (response.ok) {
         const data = await response.json();
         setHistory(data.transactions || []);
+        setPagination({
+          currentPage: parseInt(data.currentPage, 10),
+          totalPages: parseInt(data.totalPages, 10) || 1,
+        });
         
         // Подготавливаем данные для графика
         prepareChartData(data.transactions || []);
@@ -241,10 +307,19 @@ const TokenHistory = () => {
     }));
   };
 
-  const handleDateChange = (field, value) => {
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadHistory(newPage);
+    }
+  };
+
+  const handleDateChange = (dates) => {
+    const [start, end] = dates;
+    setDateRange(dates);
     setFilters(prev => ({
       ...prev,
-      [field]: value
+      startDate: start ? start.toISOString().slice(0, 10) : '',
+      endDate: end ? end.toISOString().slice(0, 10) : ''
     }));
   };
 
@@ -255,6 +330,7 @@ const TokenHistory = () => {
       endDate: '',
       type: 'all'
     });
+    setDateRange([null, null]);
   };
 
   const formatDate = (dateString) => {
@@ -622,25 +698,30 @@ const TokenHistory = () => {
                     <Filter className="w-4 h-4" />
                     Сбросить фильтры
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleExport}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Экспорт в Excel
+                  </Button>
                 </div>
               </div>
               {/* Custom date range picker */}
               {filters.period === 'custom' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t">
                   <div className="space-y-2">
-                    <Label>Начальная дата</Label>
-                    <Input
-                      type="date"
-                      value={filters.startDate}
-                      onChange={(e) => handleDateChange('startDate', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Конечная дата</Label>
-                    <Input
-                      type="date"
-                      value={filters.endDate}
-                      onChange={(e) => handleDateChange('endDate', e.target.value)}
+                    <Label>Диапазон дат</Label>
+                    <DatePicker
+                      selectsRange={true}
+                      startDate={startDate}
+                      endDate={endDate}
+                      onChange={handleDateChange}
+                      isClearable={true}
+                      dateFormat="yyyy-MM-dd"
+                      className="w-full p-2 border rounded-md"
+                      placeholderText="Выберите диапазон дат"
                     />
                   </div>
                 </div>
@@ -687,6 +768,28 @@ const TokenHistory = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {/* Pagination Controls */}
+              {history.length > 0 && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-4 mt-6">
+                  <Button
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    disabled={pagination.currentPage <= 1}
+                    variant="outline"
+                  >
+                    Назад
+                  </Button>
+                  <span className="text-sm font-medium">
+                    Страница {pagination.currentPage} из {pagination.totalPages}
+                  </span>
+                  <Button
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    disabled={pagination.currentPage >= pagination.totalPages}
+                    variant="outline"
+                  >
+                    Вперед
+                  </Button>
                 </div>
               )}
             </CardContent>

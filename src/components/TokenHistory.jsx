@@ -31,7 +31,7 @@ import { exportToExcel } from '../utils/exportToExcel';
 const TokenHistory = () => {
   const location = useLocation();
   const { API_BASE, csrfToken } = useAuth();
-  const { balance, fetchBalance } = useTokenBalance(); // Get balance and fetchBalance from context
+  const { balance, bonusBalance, fetchBalance } = useTokenBalance(); // Get balance and fetchBalance from context
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
@@ -415,7 +415,10 @@ const TokenHistory = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-bold">{balance} токенов</div>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <span>{balance.toLocaleString()} токенов</span>
+              <span className="text-lg text-blue-500 font-medium">(+{bonusBalance.toLocaleString()} бонусных)</span>
+            </div>
             <Button 
               onClick={() => setShowTopUpForm(!showTopUpForm)}
               className="flex items-center gap-2"

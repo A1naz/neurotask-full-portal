@@ -13,6 +13,7 @@ export const useTokenBalance = () => {
 
 export const TokenBalanceProvider = ({ children }) => {
   const [balance, setBalance] = useState(0);
+  const [bonusBalance, setBonusBalance] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user, API_BASE } = useAuth();
 
@@ -28,6 +29,7 @@ export const TokenBalanceProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setBalance(data.balance || 0);
+        setBonusBalance(data.bonusBalance || 0);
       }
     } catch (error) {
       } finally {
@@ -37,6 +39,10 @@ export const TokenBalanceProvider = ({ children }) => {
 
   const updateBalance = (newBalance) => {
     setBalance(newBalance);
+  };
+
+  const updateBonusBalance = (newBonusBalance) => {
+    setBonusBalance(newBonusBalance);
   };
 
   // Загружаем баланс при инициализации
@@ -61,9 +67,11 @@ export const TokenBalanceProvider = ({ children }) => {
 
   const value = {
     balance,
+    bonusBalance,
     loading,
     fetchBalance,
-    updateBalance
+    updateBalance,
+    updateBonusBalance,
   };
 
   return (

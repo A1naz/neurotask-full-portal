@@ -24,6 +24,22 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  bonusBalance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  bonusBalanceLimit: {
+    type: Number,
+    default: 50
+  },
+  dailyBonusAmount: {
+    type: Number,
+    default: 50
+  },
+  lastBonusGrantedAt: {
+    type: Date
+  },
   emailVerified: {
     type: Boolean,
     default: false

@@ -194,9 +194,27 @@ router.get("/:userId/balance", requireApiKey, async (req, res) => {
       });
     }
 
+    // --- Логика начисления ежедневного бонуса ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!user.lastBonusGrantedAt || user.lastBonusGrantedAt < today) {
+      const bonusToAdd = user.dailyBonusAmount || 50;
+      const limit = user.bonusBalanceLimit || 50;
+      const currentBonusBalance = user.bonusBalance || 0;
+
+      if (currentBonusBalance < limit) {
+        user.bonusBalance = Math.min(limit, currentBonusBalance + bonusToAdd);
+        user.lastBonusGrantedAt = new Date();
+        await user.save();
+      }
+    }
+    // --- Конец логики начисления бонуса ---
+
     res.json({
       success: true,
       balance: user.balance || 0,
+      bonusBalance: user.bonusBalance || 0,
       userId: user._id,
     });
   } catch (error) {
@@ -237,17 +255,34 @@ router.post("/:userId/balance", requireApiKey, async (req, res) => {
     }
 
     const oldBalance = user.balance || 0;
+    const oldBonusBalance = user.bonusBalance || 0;
 
     if (type === "spend") {
-      if (oldBalance < amount) {
-        return res.status(400).json({
-          error: "Insufficient Balance",
-          message: "Недостаточно средств на балансе",
-        });
+      let amountToDeduct = amount;
+      
+      // Сначала списываем с бонусного баланса
+      if (oldBonusBalance > 0) {
+        const deductFromBonus = Math.min(amountToDeduct, oldBonusBalance);
+        user.bonusBalance -= deductFromBonus;
+        amountToDeduct -= deductFromBonus;
       }
-      user.balance = oldBalance - amount;
-    } else if (type === "top_up" || type === "refund" || type === "bonus") {
+
+      // Если остались токены для списания, списываем с основного баланса
+      if (amountToDeduct > 0) {
+        if (oldBalance < amountToDeduct) {
+          // Возвращаем бонусный баланс, если основной недостаточен
+          user.bonusBalance = oldBonusBalance;
+          return res.status(400).json({
+            error: "Insufficient Balance",
+            message: "Недостаточно средств на основном балансе",
+          });
+        }
+        user.balance -= amountToDeduct;
+      }
+    } else if (type === "top_up" || type === "refund") {
       user.balance = oldBalance + amount;
+    } else if (type === "bonus") {
+      user.bonusBalance = oldBonusBalance + amount;
     } else {
       return res.status(400).json({
         error: "Bad Request",
@@ -268,6 +303,8 @@ router.post("/:userId/balance", requireApiKey, async (req, res) => {
       metadata: metadata,
       balanceBefore: oldBalance,
       balanceAfter: user.balance,
+      bonusBalanceBefore: oldBonusBalance,
+      bonusBalanceAfter: user.bonusBalance,
     });
 
     await transaction.save();
@@ -276,6 +313,7 @@ router.post("/:userId/balance", requireApiKey, async (req, res) => {
       success: true,
       message: "Баланс обновлен",
       newBalance: user.balance,
+      newBonusBalance: user.bonusBalance,
       transaction: transaction,
     });
   } catch (error) {

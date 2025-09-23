@@ -12,6 +12,7 @@ import { User, Wallet, Plus, LogOut, Mail, Share2 } from 'lucide-react';
 const ProfileDropdown = ({
   user,
   tokenBalance,
+  bonusBalance,
   profileMenuItems,
   isLoading,
   error,
@@ -51,6 +52,9 @@ const ProfileDropdown = ({
             <div className="flex items-center  gap-2">
               <span className="text-lg font-bold text-blue-600">
                 {tokenBalance.toLocaleString()}
+              </span>
+              <span className="text-sm text-blue-500 font-medium">
+                (+{bonusBalance.toLocaleString()})
               </span>
               <span className="text-xs text-gray-500">Токенов</span>
               <Button

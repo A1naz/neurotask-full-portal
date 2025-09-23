@@ -114,7 +114,7 @@ const Layout = ({ children }) => {
     currentChatId,
     loadUserChatHistories,
   } = useAuth();
-  const { balance: tokenBalance } = useTokenBalance();
+  const { balance: tokenBalance, bonusBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -495,6 +495,7 @@ const Layout = ({ children }) => {
                   direction="up"
                   user={user}
                   tokenBalance={tokenBalance}
+                  bonusBalance={bonusBalance}
                   profileMenuItems={profileMenuItems}
                   isLoading={isLoadingMenu}
                   error={menuError}
@@ -587,16 +588,17 @@ const Layout = ({ children }) => {
               className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-200 transition-colors"
             >
               <Wallet className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-gray-700">
-                {tokenBalance.toLocaleString()}
-              </span>
-             
+              <div className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                <span>{tokenBalance.toLocaleString()}</span>
+                <span className="text-xs text-blue-500">(+{bonusBalance.toLocaleString()})</span>
+              </div>
             </Button>
 
             <ProfileDropdown
               direction="down"
               user={user}
               tokenBalance={tokenBalance}
+              bonusBalance={bonusBalance}
               profileMenuItems={profileMenuItems}
               isLoading={isLoadingMenu}
               error={menuError}

@@ -1688,7 +1688,7 @@ const MultiChat = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className={`min-h-[50px] resize-none w-full ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
+                  className={`min-h-[50px] resize-y w-full ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
                   disabled={loading || selectedProviders.length === 0 || balance < 1}
                 />
                 {loading && (

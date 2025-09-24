@@ -590,7 +590,7 @@ const Layout = ({ children }) => {
               <Wallet className="h-4 w-4 text-green-600" />
               <div className="text-sm font-medium text-gray-700 flex items-center gap-1">
                 <span>{tokenBalance.toLocaleString()}</span>
-                <span className="text-xs text-blue-500">(+{bonusBalance.toLocaleString()})</span>
+                {/* <span className="text-xs text-blue-500">(+{bonusBalance.toLocaleString()})</span> */}
               </div>
             </Button>
 

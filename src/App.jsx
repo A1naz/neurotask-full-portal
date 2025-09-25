@@ -67,6 +67,14 @@ const RootRedirect = () => {
 };
 
 function App() {
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    if (ref) {
+      localStorage.setItem('referral', ref);
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <TokenBalanceProvider>

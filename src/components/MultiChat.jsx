@@ -142,6 +142,10 @@ const MultiChat = () => {
 
   const [providerImageFiles, setProviderImageFiles] = useState({}); // Новое состояние для файлов изображений
 
+  const [mainInputImageUrl, setMainInputImageUrl] = useState(null);
+  const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
+  const mainFileInputRef = useRef(null);
+
   const loadUserChatHistories = async () => {
     if (!csrfToken || !user?._id) return;
     try {
@@ -161,6 +165,55 @@ const MultiChat = () => {
     } catch (error) {
       console.error('Ошибка загрузки истории чатов пользователя:', error);
     }
+  };
+
+  const handleMainImageUpload = async (imageFile) => {
+    if (!imageFile) return;
+
+    setIsUploadingMainImage(true);
+    setMainInputImageUrl(null); // Reset previous
+
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    try {
+        const response = await fetch(`${API_BASE}/api/upload/vk-cloud`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'X-CSRF-Token': csrfToken,
+                'x-user-id': user._id,
+            },
+            body: formData,
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            setMainInputImageUrl(data.imageUrl);
+        } else {
+            const errorData = await response.json();
+            setError(`Ошибка загрузки изображения: ${errorData.message || 'Неизвестная ошибка'}`);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки изображения:', error);
+        setError('Ошибка сети при загрузке изображения');
+    } finally {
+        setIsUploadingMainImage(false);
+    }
+  };
+
+  const handleMainImageSelect = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+          handleMainImageUpload(file);
+      }
+  };
+
+  const handleClearMainImage = () => {
+      setMainInputImageUrl(null);
+      if(mainFileInputRef.current) {
+          mainFileInputRef.current.value = '';
+      }
   };
 
   useEffect(() => {
@@ -610,7 +663,7 @@ const MultiChat = () => {
       const promises = providersInCurrentCategory.map(provider => {
         const messageContent = message.trim();
         // Pass imageUrl if it exists for this provider
-        const imageUrl = providerImageFiles[provider]?.url || null;
+        const imageUrl = mainInputImageUrl || providerImageFiles[provider]?.url || null;
         return sendToProvider(provider, messageContent, imageUrl);
       });
       
@@ -674,6 +727,7 @@ const MultiChat = () => {
 
       // Очищаем поле ввода после отправки
       setMessage('');
+      handleClearMainImage();
       
     } catch (error) {
       setError('Ошибка при отправке запросов');
@@ -1679,10 +1733,46 @@ const MultiChat = () => {
               )}
             </Alert>
           )}
+
+          {mainInputImageUrl && (
+            <div className="relative w-24 h-24 mb-2">
+              <img src={mainInputImageUrl} alt="Preview" className="w-full h-full object-cover rounded-md" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-1 right-1 h-6 w-6 p-0 bg-white/70 hover:bg-white"
+                onClick={handleClearMainImage}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+           )}
           
           {selectedCategory !== 'mix' && (
             <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 relative">
+              <div className="flex-1 relative flex items-center gap-2">
+                {(selectedCategory === 'image' || selectedCategory === 'video') && (
+                  <>
+                    <input
+                      type="file"
+                      ref={mainFileInputRef}
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={handleMainImageSelect}
+                      disabled={loading || balance < 1}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => mainFileInputRef.current?.click()}
+                      className="px-3"
+                      title="Загрузить изображение или видео"
+                      disabled={loading || balance < 1 || isUploadingMainImage}
+                    >
+                      {isUploadingMainImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </>
+                )}
                 <Textarea
                   placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
                   value={message}

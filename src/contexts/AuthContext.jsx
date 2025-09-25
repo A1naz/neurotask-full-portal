@@ -369,7 +369,7 @@ const API_BASE = (() => {
     }
   };
 
-  const register = async (email, password) => {
+  const register = async (email, password, referral) => {
     try {
       debugCookies(); // Debug cookies before registration
       
@@ -379,7 +379,7 @@ const API_BASE = (() => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, referral }),
       });
 
       const data = await response.json();

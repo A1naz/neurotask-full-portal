@@ -100,7 +100,8 @@ const Register = () => {
     }
 
     try {
-      const result = await register(formData.email, formData.password); // Removed username
+      const referral = localStorage.getItem('referral');
+      const result = await register(formData.email, formData.password, referral);
 
       if (result.success) {
         setTempUserData(result.user);
@@ -134,6 +135,7 @@ const Register = () => {
           // Автоматически перенаправляем в профиль после верификации
           setMessage('Email успешно верифицирован! Вы автоматически вошли в систему.');
           setError(''); // Очищаем ошибки
+          localStorage.removeItem('referral'); // Очищаем реферала после успешной регистрации
           
           // Небольшая задержка чтобы пользователь увидел сообщение об успехе
           setTimeout(() => {

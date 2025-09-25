@@ -21,6 +21,7 @@ router.post("/", requireApiKey, async (req, res) => {
       verificationCode,
       verificationExpires,
       emailVerified = false,
+      referral,
     } = req.body;
 
     if (!username || !email || !password) {
@@ -63,9 +64,39 @@ router.post("/", requireApiKey, async (req, res) => {
       emailVerified,
       createdAt: new Date(),
       updatedAt: new Date(),
+      referral: referral || null,
     });
 
     await user.save();
+
+    if (referral) {
+      try {
+        const referrer = await User.findById(referral);
+        if (referrer) {
+          referrer.bonusBalance += 100;
+          await referrer.save();
+
+          // Create a transaction for the referral bonus
+          const transaction = new TokenTransaction({
+            userId: referrer._id,
+            type: 'bonus',
+            amount: 100,
+            description: `Бонус за регистрацию реферала: ${user.email}`,
+            metadata: {
+              referredUserId: user._id,
+              referredUserEmail: user.email,
+            },
+            balanceBefore: referrer.balance,
+            balanceAfter: referrer.balance,
+            bonusBalanceBefore: referrer.bonusBalance - 100,
+            bonusBalanceAfter: referrer.bonusBalance,
+          });
+          await transaction.save();
+        }
+      } catch (e) {
+        console.error("Could not award referral bonus:", e);
+      }
+    }
 
     res.status(201).json({
       success: true,

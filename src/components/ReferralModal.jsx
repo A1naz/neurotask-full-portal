@@ -10,7 +10,7 @@ const ReferralModal = ({ isOpen, onClose }) => {
 
     // Get base URL from env variable, with a fallback
     const baseURL = import.meta.env.VITE_APP_BASE_URL || 'https://neurotask.ru';
-    const referralLink = user ? `${baseURL}/?ref=${user._id}` : '';
+    const referralLink = user ? `${baseURL}/register/?ref=${user._id}` : '';
 
     const handleCopy = () => {
         if (referralLink) {

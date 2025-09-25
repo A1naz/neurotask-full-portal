@@ -20,7 +20,7 @@ const { sendVerificationEmail, resendVerificationEmail, sendPasswordResetEmail }
 // Регистрация пользователя
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, referral } = req.body;
     
     if (!email || !password) {
       return res.status(400).json({
@@ -92,7 +92,8 @@ router.post('/register', async (req, res) => {
       verificationExpires,
       emailVerified: false,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      referral: referral || null
     };
 
     const createUserResponse = await axios.post(`${DATABASE_SERVICE_URL}/api/users`, userData, {

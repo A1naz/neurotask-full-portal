@@ -131,6 +131,11 @@ const userSchema = new mongoose.Schema({
     enum: ['owner', 'admin', 'manager', 'member', 'guest'],
     default: 'member'
   },
+  referral: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   tariffId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'TariffPlan',

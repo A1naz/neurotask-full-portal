@@ -453,6 +453,17 @@ const Register = () => {
               <p className="text-sm text-gray-600 text-center mb-4">
                 После регистрации на вашу почту будет отправлен код подтверждения, который необходимо ввести для активации аккаунта.
               </p>
+              <div className="mt-4 text-center text-sm text-gray-600">
+              Регистрируясь, вы принимаете&nbsp;
+              <a href="/terms.pdf" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">
+                Оферту
+              </a>
+              &nbsp;и&nbsp;
+              <a href="/privacy-policy.pdf" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">
+                Политику конфиденциальности
+              </a>
+              .
+            </div>
 
               <Button
                 type="submit"
@@ -470,6 +481,7 @@ const Register = () => {
               </Button>
             </form>
 
+      
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Уже есть аккаунт?{' '}

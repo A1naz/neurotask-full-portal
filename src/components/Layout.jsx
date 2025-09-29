@@ -415,6 +415,7 @@ const Layout = ({ children }) => {
                 />
               )}
               {!isSidebarCollapsed && item.label}
+              
             </Button>
           )}
         </div>

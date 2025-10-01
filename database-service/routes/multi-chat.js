@@ -153,7 +153,9 @@ router.post("/:provider", requireApiKey, async (req, res) => {
             aiResponseData.data.provider === "veo3" &&
             aiResponseData.data.videoUrl
           ) {
-            contentToSend = aiResponseData.data.videoUrl;
+            contentToSend = Array.isArray(aiResponseData.data.videoUrl)
+              ? aiResponseData.data.videoUrl.join("\n")
+              : aiResponseData.data.videoUrl;
           } else if (
             aiResponseData.data.provider === "sora" &&
             aiResponseData.data.videoUrl &&

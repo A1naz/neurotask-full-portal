@@ -151,7 +151,6 @@ const MultiChat = () => {
     try {
       const response = await fetch(`${API_BASE}/api/multi-chat/all-chat-histories`, {
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
@@ -258,7 +257,6 @@ const MultiChat = () => {
       let url = `${API_BASE}/api/multi-chat/history/${provider}?chatId=${chatIdToLoad}`;
       const response = await fetch(url, {
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
@@ -286,7 +284,6 @@ const MultiChat = () => {
       const response = await fetch(`${API_BASE}/api/multi-chat/history/${provider}`, {
         method: 'DELETE',
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
@@ -329,12 +326,10 @@ const MultiChat = () => {
     try {
       const response = await fetch(`${API_BASE}/api/multi-chat/providers`, {
         credentials: 'include',
-        timeout: 300000,
         headers: { 'X-CSRF-Token': csrfToken, 'x-user-id': user._id }
       });
       const aiSettingsResponse = await fetch(`${API_BASE}/api/multi-chat/ai-settings/${user._id}`, {
         credentials: 'include',
-        timeout: 300000,
         headers: { 'X-CSRF-Token': csrfToken, 'x-user-id': user._id }
       });
 
@@ -432,7 +427,6 @@ const MultiChat = () => {
     try {
       const response = await fetch(`${API_BASE}/api/multi-chat/system-prompt/active`, {
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
@@ -457,7 +451,6 @@ const MultiChat = () => {
     try {
       const response = await fetch(`${API_BASE}/api/multi-chat/user/custom-prompt`, {
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
@@ -482,8 +475,7 @@ const MultiChat = () => {
       const response = await fetch(`${API_BASE}/api/multi-chat/user/custom-prompt`, {
         method: 'POST',
         credentials: 'include',
-        timeout: 300000,
-          headers: {
+        headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken,
           'x-user-id': user._id
@@ -512,7 +504,6 @@ const MultiChat = () => {
       const limitCheckResponse = await fetch(`${API_BASE}/api/multi-chat/check-limit`, {
         method: 'POST',
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken,
@@ -547,7 +538,6 @@ const MultiChat = () => {
           await fetch(`${API_BASE}/api/chat-naming/generate-name`, {
             method: 'POST',
             credentials: 'include',
-            timeout: 300000,
             headers: {
               'Content-Type': 'application/json',
               'X-CSRF-Token': csrfToken,
@@ -575,7 +565,6 @@ const MultiChat = () => {
       const response = await fetch(`${API_BASE}/api/multi-chat/${provider}`, {
         method: 'POST',
         credentials: 'include',
-        timeout: 300000,
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken,
@@ -642,7 +631,6 @@ const MultiChat = () => {
         await fetch(`${API_BASE}/api/chat-naming/generate-name`, {
           method: 'POST',
           credentials: 'include',
-          timeout: 300000,
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': csrfToken,
@@ -1062,7 +1050,6 @@ const MultiChat = () => {
 
     try {
       const response = await fetch(`${API_BASE}/api/multi-chat/${editingChat.chatId}`, {
-        timeout: 300000,
         method: 'PUT',
         credentials: 'include',
         headers: {
@@ -1090,7 +1077,6 @@ const MultiChat = () => {
 
     try {
       const response = await fetch(`${API_BASE}/api/multi-chat/${chatId}`, {
-
         method: 'DELETE',
         credentials: 'include',
         headers: {

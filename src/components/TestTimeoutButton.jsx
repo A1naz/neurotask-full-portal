@@ -18,7 +18,6 @@ const TestTimeoutButton = () => {
     try {
       const response = await fetch('/api/test/long-request', {
         method: 'POST',
-        timeout: 300000,
         headers: {
           'Content-Type': 'application/json',
         },

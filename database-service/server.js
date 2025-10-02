@@ -212,6 +212,9 @@ app.use('/api/limits', require('./routes/limits'));
 // Contact Endpoints
 app.use('/api/contact', contactRoutes);
 
+// Test Timeout Endpoints
+app.use('/api/test', require('./routes/test-timeout'));
+
 // Обработка ошибок
 app.use((err, req, res, next) => {
   res.status(500).json({ 

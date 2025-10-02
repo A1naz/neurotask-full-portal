@@ -232,9 +232,12 @@ app.use('*', (req, res) => {
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Запуск сервера
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Database Service running on port ${PORT}`);
   console.log(`📁 Routes loaded: ${Object.keys(app._router.stack).length - 4} routes`);
 });
+
+// Устанавливаем кастомный таймаут для сервера (10 минут)
+server.setTimeout(600000);
 
 module.exports = app;

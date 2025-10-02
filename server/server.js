@@ -241,9 +241,12 @@ app.use('/api/selected-providers', require('./routes/selected-providers'));
 app.use('/api/upload', require('./routes/upload'));
 
 // Запуск сервера
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Main Server запущен на порту ${PORT}`);
 });
+
+// Устанавливаем кастомный таймаут для сервера (10 минут)
+server.setTimeout(600000);
 
 // Экспортируем приложение
 module.exports = app;

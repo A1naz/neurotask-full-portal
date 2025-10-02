@@ -54,7 +54,6 @@ import ChatHistoryMenu from './ChatHistoryMenu';
 import ContactUsModal from './ContactUsModal'; // Импортируем модальное окно
 import ChatHistoryModal from './ChatHistoryModal'; // Импортируем модальное окно истории
 import ReferralModal from './ReferralModal'; // Импортируем реферальное модальное окно
-import TestTimeoutButton from './TestTimeoutButton'; // Импортируем кнопку тестирования таймаутов
 
 // Маппинг имен иконок на компоненты иконок
 const iconComponents = {
@@ -480,11 +479,6 @@ const Layout = ({ children }) => {
           <nav className="flex-1 px-4 py-6 overflow-y-auto">
             {renderMenuItems()}
             <ChatHistoryMenu onShowHistory={() => setHistoryModalOpen(true)} />
-            
-            {/* Test Timeout Button */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <TestTimeoutButton />
-            </div>
           </nav>
 
           {/* User Profile Section & Collapse button */}

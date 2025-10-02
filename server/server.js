@@ -142,14 +142,13 @@ app.get('/csrf-token', (req, res) => {
 
 // Исключения для CSRF валидации
 app.use('/api/', (req, res, next) => {
-  // Исключаем маршруты аутентификации, получения CSRF токена и тестовые роуты
+  // Исключаем маршруты аутентификации и получения CSRF токена
   if (req.path === '/auth/login' || 
       req.path === '/auth/register' || 
       req.path === '/auth/verify-email' ||
       req.path === '/auth/resend-verification' ||
       req.path === '/csrf-token' ||
-      req.path.startsWith('/auth/') ||
-      req.path.startsWith('/test/')) {
+      req.path.startsWith('/auth/')) {
     return next();
   }
   
@@ -218,7 +217,6 @@ app.use('/api/menu', require('./routes/menu')); // Подключаем новы
 app.use('/api/permissions', require('./routes/permissions'));
 app.use('/api/provider-order', require('./routes/provider-order'));
 app.use('/api/contact-us', require('./routes/contact')); // Добавляем новый роут
-app.use('/api/test', require('./routes/test-timeout')); // Добавляем тестовый роут
 
 // Прокси для эндпоинта именования чатов
 app.use('/api/chat-naming', async (req, res) => {

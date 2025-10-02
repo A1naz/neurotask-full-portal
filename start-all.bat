@@ -46,12 +46,12 @@ echo ========================================
 echo Все сервисы запущены!
 echo ========================================
 echo.
-echo Database Service: http://localhost:3003
+echo Database Service: http://localhost:3012
 echo Cache Service: http://localhost:3013
 echo Основной сервер: http://localhost:3001
 echo Balance Service: http://localhost:3002
 echo AI Gateway: http://localhost:3004
-echo Telegram Bot Service: http://localhost:3005
+echo Telegram Bot Service: http://localhost:3003
 echo OpenAI Service: http://localhost:3006
 echo Gemini Service: http://localhost:3007
 echo Anthropic Service: http://localhost:3008

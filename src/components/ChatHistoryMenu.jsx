@@ -39,6 +39,7 @@ const ChatHistoryMenu = ({ onShowHistory }) => {
             const response = await fetch(`${API_BASE}/api/multi-chat/all-chat-histories?page=1&limit=5`, {
                 credentials: 'include',
                 headers: { 'X-CSRF-Token': csrfToken, 'x-user-id': user._id },
+                timeout: 300000,
             });
             if (response.ok) {
                 const data = await response.json();
@@ -69,6 +70,7 @@ const ChatHistoryMenu = ({ onShowHistory }) => {
             const response = await fetch(`${API_BASE}/api/multi-chat/${chatId}`, {
                 method: 'DELETE',
                 credentials: 'include',
+                timeout: 300000,
                 headers: {
                     'X-CSRF-Token': csrfToken,
                     'x-user-id': user._id
@@ -101,6 +103,7 @@ const ChatHistoryMenu = ({ onShowHistory }) => {
             const response = await fetch(`${API_BASE}/api/multi-chat/${editingChat.chatId}`, {
                 method: 'PUT',
                 credentials: 'include',
+                timeout: 300000,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken,

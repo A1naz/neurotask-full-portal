@@ -30,6 +30,7 @@ const ChatHistoryModal = ({ isOpen, onClose }) => {
             const response = await fetch(url, {
                 credentials: 'include',
                 headers: { 'X-CSRF-Token': csrfToken },
+                timeout: 300000,
             });
             if (response.ok) {
                 const data = await response.json();
@@ -86,6 +87,7 @@ const ChatHistoryModal = ({ isOpen, onClose }) => {
             await fetch(`${API_BASE}/api/multi-chat/${chatId}`, {
                 method: 'DELETE',
                 credentials: 'include',
+                timeout: 300000,
                 headers: { 'X-CSRF-Token': csrfToken },
             });
             setHistory(prev => prev.filter(c => c.chatId !== chatId));
@@ -102,6 +104,7 @@ const ChatHistoryModal = ({ isOpen, onClose }) => {
                 await fetch(`${API_BASE}/api/multi-chat/${chatId}/rename`, {
                     method: 'PATCH',
                     credentials: 'include',
+                    timeout: 300000,
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
                     body: JSON.stringify({ title: newTitle.trim() }),
                 });

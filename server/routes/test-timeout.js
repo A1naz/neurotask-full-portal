@@ -26,7 +26,7 @@ router.post("/long-request", requireAuth, async (req, res) => {
           "x-user-id": userId,
           "Content-Type": "application/json",
         },
-        timeout: 130000, // 130 секунд (больше чем 120 на бэкенде)
+        timeout: 300000, // 300 секунд (5 минут)
       }
     );
 

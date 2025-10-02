@@ -235,9 +235,14 @@ app.use('*', (req, res) => {
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Запуск сервера
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Database Service running on port ${PORT}`);
   console.log(`📁 Routes loaded: ${Object.keys(app._router.stack).length - 4} routes`);
 });
+
+// Устанавливаем таймаут сервера на 5 минут для длительных запросов
+server.timeout = 300000; // 300 секунд (5 минут)
+server.keepAliveTimeout = 300000;
+server.headersTimeout = 310000; // Немного больше чем server.timeout
 
 module.exports = app;

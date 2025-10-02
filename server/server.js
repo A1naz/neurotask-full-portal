@@ -243,9 +243,14 @@ app.use('/api/selected-providers', require('./routes/selected-providers'));
 app.use('/api/upload', require('./routes/upload'));
 
 // Запуск сервера
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Main Server запущен на порту ${PORT}`);
 });
+
+// Устанавливаем таймаут сервера на 5 минут для длительных запросов
+server.timeout = 300000; // 300 секунд (5 минут)
+server.keepAliveTimeout = 300000;
+server.headersTimeout = 310000; // Немного больше чем server.timeout
 
 // Экспортируем приложение
 module.exports = app;

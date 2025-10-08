@@ -37,7 +37,11 @@ const createTestTransporter = () => {
 const createProductionTransporter = () => {
   // Логируем переменные окружения для отладки
   console.log('🔧 SMTP Configuration:');
-  console.log('  • SMTP_HOST:', process.env.SMTP_HOST || '31.31.196.41 (default)');
+  // Используйте доменное имя вместо IP-адреса.
+  // Отправка почты с IP-адреса напрямую часто приводит к тому,
+  // что письма попадают в спам или блокируются почтовыми сервисами, такими как Gmail.
+  // Убедитесь, что для вашего домена настроены корректные DNS-записи (PTR, SPF, DKIM).
+  console.log('  • SMTP_HOST:', process.env.SMTP_HOST || 'smtp.neurotask.ru (default)');
   console.log('  • SMTP_PORT:', process.env.SMTP_PORT || '587 (default)');
   console.log('  • SMTP_SECURE:', process.env.SMTP_SECURE || 'false (default)');
   console.log('  • SMTP_USER:', process.env.SMTP_USER || process.env.EMAIL_USER || 'not set');
@@ -45,7 +49,7 @@ const createProductionTransporter = () => {
   console.log('  • SMTP_NAME:', process.env.SMTP_NAME || 'neurotask.ru (default)');
   
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || '31.31.196.41',
+    host: process.env.SMTP_HOST || 'smtp.neurotask.ru', // ЗАМЕНА IP НА ДОМЕН
     port: process.env.SMTP_PORT || 587,
     secure: process.env.SMTP_SECURE === 'true' || false,
     auth: {

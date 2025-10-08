@@ -19,12 +19,12 @@ const createTestTransporter = () => {
   console.log('  • SMTP_NAME:', process.env.SMTP_NAME || 'neurotask.ru (fallback)');
   
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+    host: process.env.SMTP_HOST || '31.31.196.41',
     port: process.env.SMTP_PORT || 587,
     secure: process.env.SMTP_SECURE === 'true' || false,
     auth: {
-      user: process.env.SMTP_USER || process.env.EMAIL_USER || 'test@example.com',
-      pass: process.env.SMTP_PASS || process.env.EMAIL_PASS || 'test123'
+      user: process.env.SMTP_USER || process.env.EMAIL_USER || 'info@neurotask.',
+      pass: process.env.SMTP_PASS || process.env.EMAIL_PASS || 'hU4oJ8xV3zpG6yD7'
     },
     tls: {
       rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true' || false

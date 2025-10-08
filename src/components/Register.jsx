@@ -24,6 +24,7 @@ const Register = () => {
   const [verificationStep, setVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [tempUserData, setTempUserData] = useState(null);
+  const [gmailError, setGmailError] = useState(false);
 
   const { register, verifyEmail, resendVerificationCode } = useAuth();
   const navigate = useNavigate();
@@ -51,12 +52,21 @@ const Register = () => {
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
     setError('');
     setMessage(''); // Очищаем сообщения при изменении формы
+
+    if (name === 'email') {
+      if (value.toLowerCase().includes('@gmail.com')) {
+        setGmailError(true);
+      } else {
+        setGmailError(false);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -339,6 +349,11 @@ const Register = () => {
                     required
                   />
                 </div>
+                {gmailError && (
+                    <p className="text-sm text-red-600 ml-1">
+                        gmail.com недоступен для регистрации
+                    </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -468,7 +483,7 @@ const Register = () => {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loading || !isPasswordValid || formData.password !== formData.confirmPassword}
+                disabled={loading || !isPasswordValid || formData.password !== formData.confirmPassword || gmailError}
               >
                 {loading ? (
                   <>

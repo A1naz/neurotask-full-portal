@@ -72,7 +72,7 @@ import {
 
 const MultiChat = () => {
   const { API_BASE, csrfToken, user, currentChatId, selectChat } = useAuth();
-  const { balance, updateBalance } = useTokenBalance();
+  const { totalBalance, updateBalance } = useTokenBalance();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [responses, setResponses] = useState({});
@@ -558,7 +558,7 @@ const MultiChat = () => {
       }
 
       // 🔒 ПРОВЕРЯЕМ БАЛАНС ПЕРЕД ОТПРАВКОЙ
-      if (balance < 1) {
+      if (totalBalance < 1) {
         return { status: 'error', content: '', error: 'Недостаточно токенов для отправки сообщения. Пополните баланс.' };
       }
       
@@ -610,7 +610,7 @@ const MultiChat = () => {
     }
 
     // 🔒 ПРОВЕРЯЕМ БАЛАНС ПЕРЕД ОТПРАВКОЙ
-    if (balance < 1) {
+    if (totalBalance < 1) {
       setError('Недостаточно токенов для отправки сообщения. Пополните баланс.');
       return;
     }
@@ -674,7 +674,7 @@ const MultiChat = () => {
       let anyError = false;
       let totalTokensDeducted = 0;
       let hasInsufficientBalance = false;
-      let currentBalance = balance;
+      let currentBalance = totalBalance;
 
       for (let i = 0; i < results.length; i++) {
         const result = results[i];
@@ -1578,7 +1578,7 @@ const MultiChat = () => {
                                  chatRef={el => chatRefs.current[provider] = el}
                                  onSendMessage={sendToProvider} // Передаем функцию
                                  onImageUpload={handleProviderImageUpload} // Передаем функцию
-                                 balance={balance} // Передаем баланс
+                                 balance={totalBalance} // Передаем баланс
                                />
                              )) : selectedProviders.filter(p => aiModelsConfig[p]?.type === selectedCategory).map(provider => (
                                <SortableProviderCard 
@@ -1595,7 +1595,7 @@ const MultiChat = () => {
                                  chatRef={el => chatRefs.current[provider] = el}
                                  onSendMessage={sendToProvider} // Передаем функцию
                                  onImageUpload={handleProviderImageUpload} // Передаем функцию
-                                 balance={balance} // Передаем баланс
+                                 balance={totalBalance} // Передаем баланс
                                />
                              ))}
                            </SortableContext>
@@ -1608,7 +1608,7 @@ const MultiChat = () => {
                                  isExpanded={expandedProviders[activeId]}
                                  size={providerSizes[activeId]}
                                  onImageUpload={handleProviderImageUpload}
-                                 balance={balance} // Передаем баланс
+                                 balance={totalBalance} // Передаем баланс
                                />
                              ) : null}
                            </DragOverlay>
@@ -1669,7 +1669,7 @@ const MultiChat = () => {
                       accept="image/*,video/*"
                       className="hidden"
                       onChange={handleMainImageSelect}
-                      disabled={loading || balance < 1}
+                      disabled={loading || totalBalance < 1}
                     />
                     <Button
                       size="sm"
@@ -1677,19 +1677,19 @@ const MultiChat = () => {
                       onClick={() => mainFileInputRef.current?.click()}
                       className="px-3"
                       title="Загрузить изображение или видео"
-                      disabled={loading || balance < 1 || isUploadingMainImage}
+                      disabled={loading || totalBalance < 1 || isUploadingMainImage}
                     >
                       {isUploadingMainImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                     </Button>
                   </>
                 )}
                 <Textarea
-                  placeholder={balance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
+                  placeholder={totalBalance < 1 ? "Недостаточно токенов. Пополните баланс." : "Введите ваш запрос..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className={`min-h-[50px] resize-y w-full ${balance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
-                  disabled={loading || selectedProviders.length === 0 || balance < 1}
+                  className={`min-h-[50px] resize-y w-full ${totalBalance < 1 ? 'bg-gray-100 text-gray-500' : ''}`}
+                  disabled={loading || selectedProviders.length === 0 || totalBalance < 1}
                 />
                 {loading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 dark:bg-black dark:bg-opacity-80 rounded-md z-10">
@@ -1700,9 +1700,9 @@ const MultiChat = () => {
               </div>
               <Button
                 onClick={sendToAllProviders}
-                disabled={loading || !message.trim() || selectedProviders.length === 0 || balance < 1}
+                disabled={loading || !message.trim() || selectedProviders.length === 0 || totalBalance < 1}
                 className="px-6 w-full sm:w-auto"
-                title={`loading: ${loading}, message: ${!!message.trim()}, providers: ${selectedProviders.length}, balance: ${balance}`}
+                title={`loading: ${loading}, message: ${!!message.trim()}, providers: ${selectedProviders.length}, balance: ${totalBalance}`}
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1716,7 +1716,7 @@ const MultiChat = () => {
           {selectedCategory !== 'mix' && (
             <div className="mt-0.5 text-xs text-gray-500">
               Нажмите Enter для отправки, Shift+Enter для новой строки
-              {balance < 1 && (
+              {totalBalance < 1 && (
                 <span className="ml-2 text-red-500 font-medium">
                   ⚠️ Недостаточно токенов для отправки сообщения
                 </span>

@@ -51,7 +51,7 @@ router.post("/", requireApiKey, async (req, res) => {
       firstName,
       lastName,
       role,
-      balance: 0,
+      balance: 50,
       isTeamOwner: true,
       interface: {
         agentsExpanded: false,
@@ -246,6 +246,7 @@ router.get("/:userId/balance", requireApiKey, async (req, res) => {
       success: true,
       balance: user.balance || 0,
       bonusBalance: user.bonusBalance || 0,
+      totalBalance: (user.balance || 0) + (user.bonusBalance || 0),
       userId: user._id,
     });
   } catch (error) {

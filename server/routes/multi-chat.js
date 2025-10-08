@@ -245,7 +245,7 @@ router.post(
           });
         }
 
-        const currentBalance = balanceResponse.data.balance || 0;
+        const currentBalance = balanceResponse.data.totalBalance || 0;
         // Проверяем, достаточно ли токенов (минимум 1 токен)
         if (currentBalance < 1) {
           return res.status(402).json({

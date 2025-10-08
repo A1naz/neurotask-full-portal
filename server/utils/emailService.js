@@ -19,12 +19,12 @@ const createTestTransporter = () => {
   console.log('  • SMTP_NAME:', process.env.SMTP_NAME || 'neurotask.ru (fallback)');
   
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || '31.31.196.41',
-    port: process.env.SMTP_PORT || 587,
-    secure: process.env.SMTP_SECURE === 'true' || false,
+    host: '31.31.196.41',
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.SMTP_USER || process.env.EMAIL_USER || 'info@neurotask.',
-      pass: process.env.SMTP_PASS || process.env.EMAIL_PASS || 'hU4oJ8xV3zpG6yD7'
+      user: 'info@neurotask.ru',
+      pass: 'hU4oJ8xV3zpG6yD7'
     },
     tls: {
       rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true' || false
@@ -37,7 +37,7 @@ const createTestTransporter = () => {
 const createProductionTransporter = () => {
   // Логируем переменные окружения для отладки
   console.log('🔧 SMTP Configuration:');
-  console.log('  • SMTP_HOST:', process.env.SMTP_HOST || '31.31.196.41 (default)');
+  console.log('  • SMTP_HOST:', process.env.SMTP_HOST || '31.31.196.41');
   console.log('  • SMTP_PORT:', process.env.SMTP_PORT || '587 (default)');
   console.log('  • SMTP_SECURE:', process.env.SMTP_SECURE || 'false (default)');
   console.log('  • SMTP_USER:', process.env.SMTP_USER || process.env.EMAIL_USER || 'not set');
@@ -45,12 +45,12 @@ const createProductionTransporter = () => {
   console.log('  • SMTP_NAME:', process.env.SMTP_NAME || 'neurotask.ru (default)');
   
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || '31.31.196.41',
-    port: process.env.SMTP_PORT || 587,
-    secure: process.env.SMTP_SECURE === 'true' || false,
+    host: '31.31.196.41',
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.SMTP_USER || process.env.EMAIL_USER,
-      pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
+      user: 'info@neurotask.ru',
+      pass: 'hU4oJ8xV3zpG6yD7'
     },
     tls: {
       rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true' || false

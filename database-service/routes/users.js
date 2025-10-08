@@ -51,7 +51,9 @@ router.post("/", requireApiKey, async (req, res) => {
       firstName,
       lastName,
       role,
-      balance: 50,
+      balance: 0,
+      bonusBalance: 50,
+      lastBonusGrantedAt: new Date(),
       isTeamOwner: true,
       interface: {
         agentsExpanded: false,

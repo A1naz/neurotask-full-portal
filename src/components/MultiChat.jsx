@@ -1326,8 +1326,8 @@ const MultiChat = () => {
                               setShowSettings(!showSettings);
                             }}
                           >
-                            <Settings className="h-4 w-4 mr-2" />
-                            Настройки
+                            <Settings className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Настройки</span>
                           </Button>
                           {Object.keys(responses).length > 0 && (
                             <Button
@@ -1335,8 +1335,8 @@ const MultiChat = () => {
                               size="sm"
                               onClick={exportResults}
                             >
-                              <Download className="h-4 w-4 mr-2" />
-                              Экспорт
+                              <Download className="h-4 w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Экспорт</span>
                             </Button>
                           )}
                           <Button
@@ -1356,11 +1356,11 @@ const MultiChat = () => {
                             title="Очистить все чаты и начать новый"
                           >
                             {isClearingChats ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
                             ) : (
-                              <Plus className="h-4 w-4 mr-2" />
+                              <Plus className="h-4 w-4 sm:mr-2" />
                             )}
-                            {isClearingChats ? "Очистка..." : "Новый чат"}
+                            <span className="hidden sm:inline">{isClearingChats ? "Очистка..." : "Новый чат"}</span>
                           </Button>
                           <Button
                             variant="ghost"
@@ -1393,28 +1393,28 @@ const MultiChat = () => {
                               </TabsTrigger>
                               <TabsTrigger
                                 value="video"
-                                className="flex items-center gap-2 justify-center"
+                                className="flex items-center gap-2 justify-center w-full sm:w-auto"
                               >
                                 <Video className="w-4 h-4" />
                                 Видео
                               </TabsTrigger>
                               <TabsTrigger
                                 value="audio"
-                                className="flex items-center gap-2 justify-center"
+                                className="flex items-center gap-2 justify-center w-full sm:w-auto"
                               >
                                 <Music className="w-4 h-4" />
                                 Аудио
                               </TabsTrigger>
                               <TabsTrigger
                                 value="image"
-                                className="flex items-center gap-2 justify-center"
+                                className="flex items-center gap-2 justify-center w-full sm:w-auto"
                               >
                                 <Image className="w-4 h-4" />
                                 Изображения
                               </TabsTrigger>
                               <TabsTrigger
                                 value="mix"
-                                className="flex items-center gap-2 justify-center"
+                                className="flex items-center gap-2 justify-center w-full sm:w-auto"
                               >
                                 <Sparkles className="w-4 h-4" />
                                 Микс
@@ -1431,6 +1431,7 @@ const MultiChat = () => {
                               <Zap className="h-4 w-4" />
                               <span>
                                 Будет списано: <strong>{selectedProviders.length} токенов</strong> 
+                                <br className="sm:hidden" />
                                 (по 1 за каждый провайдер)
                               </span>
                             </div>
@@ -1621,6 +1622,7 @@ const MultiChat = () => {
       </div>
 
              {/* Поле ввода - закреплено внизу */}
+             {selectedCategory !== 'mix' && (
       <Card className="flex-shrink-0">
         <div className="p-2">
           {error && (
@@ -1724,7 +1726,10 @@ const MultiChat = () => {
             </div>
           )}
         </div>
+      
       </Card>
+      )}  
+      
     </div>
   );
 };

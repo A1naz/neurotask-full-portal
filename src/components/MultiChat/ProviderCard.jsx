@@ -20,6 +20,7 @@ import {
   Copy,
   Trash2,
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ProviderCard = React.forwardRef(({
   provider,
@@ -56,6 +57,7 @@ const ProviderCard = React.forwardRef(({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [droppedFile, setDroppedFile] = useState(null);
   const [dragDropError, setDragDropError] = useState('');
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     localStorage.removeItem(`multichat_input_collapsed_${provider}`);
@@ -310,9 +312,9 @@ const ProviderCard = React.forwardRef(({
         }
       )}
       style={{
-        width: isExpanded ? '100%' : (size.width ? `${size.width}px` : 'min(100%, 320px)'),
+        width: isMobile || isExpanded ? '100%' : (size.width ? `${size.width}px` : 'min(100%, 320px)'),
         height: isExpanded ? 'auto' : (size.height ? `${size.height}px` : 'auto'),
-        minWidth: isExpanded ? '100%' : 'auto',
+        minWidth: isMobile || isExpanded ? '100%' : 'auto',
         minHeight: isExpanded ? 'auto' : 'auto',
         maxHeight: isExpanded ? 'auto' : '800px',
         order: isExpanded ? -1 : 0,
@@ -342,17 +344,18 @@ const ProviderCard = React.forwardRef(({
                 variant="ghost"
                 size="sm"
                 onClick={() => onResizeStart(provider)}
-                className="h-6 w-6 p-0 hover:bg-blue-50"
+                className="h-6 w-6 p-0 hover:bg-blue-50 hidden sm:block"
                 title="Сбросить размер"
               >
                 <RotateCcw className="h-3 w-3" />
               </Button>
             )}
+            {!isMobile && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onToggleExpand}
-              className="h-6 w-6 p-0 hover:bg-blue-50"
+              className="h-6 w-6 p-0 hover:bg-blue-50 hidden sm:block"
             >
               {isExpanded ? (
                 <Minimize2 className="h-3 w-3" />
@@ -360,6 +363,7 @@ const ProviderCard = React.forwardRef(({
                 <Maximize2 className="h-3 w-3" />
               )}
             </Button>
+            )}
           </div>
         </div>
       </CardHeader>

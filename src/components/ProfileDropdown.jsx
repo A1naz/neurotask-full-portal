@@ -108,10 +108,10 @@ const ProfileDropdown = ({
 
         {/* Logout */}
         <DropdownItem onClick={onLogout} className="text-red-600">
+          <div className="flex items-center mb-1">
           <LogOut className="mr-3 h-4 w-4" />
-          <div>
             <div className="font-medium">Выйти</div>
-            <div className="text-xs text-gray-500">Завершить сессию</div>
+        
           </div>
         </DropdownItem>
       </CustomDropdown>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import NotificationPopup from './NotificationPopup'; // Импорт NotificationPopup
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,6 +72,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const MultiChat = () => {
+  const navigate = useNavigate();
   const { API_BASE, csrfToken, user, currentChatId, selectChat } = useAuth();
   const { totalBalance, updateBalance } = useTokenBalance();
   const [loading, setLoading] = useState(false);
@@ -1214,6 +1216,13 @@ const MultiChat = () => {
   return (
     <div className="flex flex-col h-full p-2 sm:p-6 relative">
       <NotificationPopup message={notification} onClose={() => setNotification('')} />
+      {/* Overlay for chat history sidebar */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 z-40"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       {/* Боковая панель для истории чатов */}
       <div
         className={cn(
@@ -1451,7 +1460,7 @@ const MultiChat = () => {
                           <div className="text-center py-4">
                             <p className="text-gray-500 mb-2">Нет активных AI провайдеров</p>
                             <p className="text-sm text-gray-400">
-                              Перейдите в раздел "Настройки AI" и включите нужные провайдеры
+                              Перейдите в раздел <span className="text-blue-500 link cursor-pointer font-bold" onClick={() => navigate('/assistant/ai-settings')}>Настройки AI</span> и включите нужные провайдеры
                             </p>
                           </div>
                         )}

@@ -581,7 +581,7 @@ const Layout = ({ children }) => {
           </div>
 
           {/* Quick Actions */}
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -596,6 +596,7 @@ const Layout = ({ children }) => {
             </Button>
 
             <ProfileDropdown
+        
               direction="down"
               user={user}
               tokenBalance={tokenBalance}
@@ -610,7 +611,7 @@ const Layout = ({ children }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 rounded-full hover:bg-blue-50"
+                  className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 hidden lg:block"
                 >
                   <div className="h-6 w-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                     <User className="h-3 w-3 text-white" />

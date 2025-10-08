@@ -71,8 +71,8 @@ const ContactUsModal = ({ isOpen, onClose }) => {
           <h2 className="text-2xl font-bold mb-2">Нужна помощь? Мы здесь, чтобы помочь.</h2>
           <p className="text-gray-600 mb-6">
             Оставьте нам сообщение или отправьте письмо на{' '}
-            <a href="mailto:feedback@genspark.ai" className="text-purple-600 underline">
-              feedback@genspark.ai
+            <a href="support@neurotask.ru" className="text-purple-600 underline">
+            support@neurotask.ru
             </a>{' '}
             — наша команда вскоре ответит.
           </p>

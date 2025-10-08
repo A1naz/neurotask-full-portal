@@ -91,6 +91,14 @@ const allMenuItems = [
   //   ],
   // },
   {
+    id: "ai-settings",
+    label: "Настройки AI",
+    iconName: "Cpu",
+    path: "/assistant/ai-settings",
+    description: "Управление AI провайдерами и ключами",
+    locations: ["profile","sidebar"],
+  },
+  {
     id: "generations",
     label: "AI генерация",
     iconName: "Sparkles",
@@ -168,20 +176,13 @@ const allMenuItems = [
   //     },
   //   ],
   // },
+
   {
     id: "token-history",
     label: "История токенов",
     iconName: "History",
     path: "/assistant/token-history",
     description: "История пополнений и списаний токенов",
-    locations: ["profile"],
-  },
-  {
-    id: "ai-settings",
-    label: "Настройки AI",
-    iconName: "Cpu",
-    path: "/assistant/ai-settings",
-    description: "Управление AI провайдерами и ключами",
     locations: ["profile"],
   },
   {

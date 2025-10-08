@@ -159,6 +159,13 @@ const sendPasswordResetEmail = async (email, username, code) => {
   try {
     const transporter = getTransporter();
     
+    console.log('  • SMTP_HOST:', process.env.SMTP_HOST || 'smtp.ethereal.email (fallback)');
+    console.log('  • SMTP_PORT:', process.env.SMTP_PORT || '587 (fallback)');
+    console.log('  • SMTP_SECURE:', process.env.SMTP_SECURE || 'false (fallback)');
+    console.log('  • SMTP_USER:', process.env.SMTP_USER || process.env.EMAIL_USER || 'test@example.com (fallback)');
+    console.log('  • SMTP_PASS:', process.env.SMTP_PASS ? '***' + process.env.SMTP_PASS.slice(-4) : process.env.EMAIL_PASS ? '***' + process.env.EMAIL_PASS.slice(-4) : 'test123 (fallback)');
+    console.log('  • SMTP_NAME:', process.env.SMTP_NAME || 'neurotask.ru (fallback)');
+    
     const mailOptions = {
       from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'info@neurotask.ru',
       to: email,

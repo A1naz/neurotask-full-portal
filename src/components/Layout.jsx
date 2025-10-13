@@ -54,6 +54,7 @@ import ChatHistoryMenu from './ChatHistoryMenu';
 import ContactUsModal from './ContactUsModal'; // Импортируем модальное окно
 import ChatHistoryModal from './ChatHistoryModal'; // Импортируем модальное окно истории
 import ReferralModal from './ReferralModal'; // Импортируем реферальное модальное окно
+import WelcomeModal from './WelcomeModal'; // Импортируем модальное окно приветствия
 
 // Маппинг имен иконок на компоненты иконок
 const iconComponents = {
@@ -87,6 +88,7 @@ const Layout = ({ children }) => {
   const [isContactModalOpen, setContactModalOpen] = useState(false);
   const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
   const [isReferralModalOpen, setReferralModalOpen] = useState(false);
+  const [isWelcomeModalOpen, setWelcomeModalOpen] = useState(false);
   // Remove local menu state
   // const [sidebarMenuItems, setSidebarMenuItems] = useState([]);
   // const [profileMenuItems, setProfileMenuItems] = useState([]);
@@ -117,6 +119,15 @@ const Layout = ({ children }) => {
   const { balance: tokenBalance, bonusBalance } = useTokenBalance();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (user) {
+      const welcomeModalShown = localStorage.getItem('welcomeModalShown');
+      if (welcomeModalShown !== 'true') {
+        setWelcomeModalOpen(true);
+      }
+    }
+  }, [user]);
 
   // Remove local menu fetching useEffect
   // useEffect(() => {
@@ -630,6 +641,7 @@ const Layout = ({ children }) => {
       <ContactUsModal isOpen={isContactModalOpen} onClose={() => setContactModalOpen(false)} />
       <ChatHistoryModal isOpen={isHistoryModalOpen} onClose={() => setHistoryModalOpen(false)} />
       <ReferralModal isOpen={isReferralModalOpen} onClose={() => setReferralModalOpen(false)} />
+      <WelcomeModal isOpen={isWelcomeModalOpen} onClose={() => setWelcomeModalOpen(false)} />
     </div>
   );
 };

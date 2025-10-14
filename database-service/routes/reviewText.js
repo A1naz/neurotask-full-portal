@@ -71,7 +71,7 @@ router.post("/review-text", async (req, res) => {
             userId: "68e61fc8e93a63122d0547aa",
           },
           {
-            timeout: 30000,
+            timeout: 60000,
             headers: {
               "Content-Type": "application/json",
             },

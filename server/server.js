@@ -148,6 +148,7 @@ app.use('/api/', (req, res, next) => {
       req.path === '/auth/verify-email' ||
       req.path === '/auth/resend-verification' ||
       req.path === '/csrf-token' ||
+      req.path.startsWith('/harmex/') ||
       req.path.startsWith('/auth/')) {
     return next();
   }
@@ -232,6 +233,25 @@ app.use('/api/chat-naming', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error('Error proxying chat naming request:', error.message);
+    res.status(error.response?.status || 500).json(error.response?.data || { message: 'Proxy error' });
+  }
+});
+app.use('/api/harmex/review-text', async (req, res) => {
+  try {
+    const { key, productName } = req.query;
+
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/review-text/review-text`, 
+      { key, productName },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': DATABASE_SERVICE_API_KEY
+        }
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error proxying review text request:', error.message);
     res.status(error.response?.status || 500).json(error.response?.data || { message: 'Proxy error' });
   }
 });

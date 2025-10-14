@@ -212,6 +212,9 @@ app.use('/api/limits', require('./routes/limits'));
 // Contact Endpoints
 app.use('/api/contact', contactRoutes);
 
+// Review Text Endpoints
+app.use('/api/review-text', require('./routes/reviewText'));
+
 // Обработка ошибок
 app.use((err, req, res, next) => {
   res.status(500).json({ 

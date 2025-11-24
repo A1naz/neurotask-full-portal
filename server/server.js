@@ -257,7 +257,7 @@ app.use('/api/harmex/review-text', async (req, res) => {
 });
 app.use('/api/harmex/review-additional-text', async (req, res) => {
   try {
-    const { key, productName } = req.query;
+    const { key, productName, oldReview } = req.query;
 
     const response = await axios.post(`${DATABASE_SERVICE_URL}/api/review-additional-text/review-additional-text`, 
       { key, productName, oldReview },

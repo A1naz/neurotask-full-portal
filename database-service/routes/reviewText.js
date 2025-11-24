@@ -107,5 +107,112 @@ router.post("/review-text", async (req, res) => {
     });
   }
 });
+router.post("/review-additional-text", async (req, res) => {
+  try {
+    const { productName, key, oldReview } = req.body;
+
+    if (!productName) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "productName is required",
+      });
+    }
+
+    if (!key || key !== HARMEX_KEY) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "key is required and must be equal to HARMEX_KEY",
+      });
+    }
+
+    const providers = [
+      {
+        name: "deepseek",
+        model: "deepseek-chat",
+        url: process.env.DEEPSEEK_SERVICE_URL,
+      },
+      {
+        name: "gemini",
+        model: "gemini-2.5-pro",
+        url: process.env.GEMINI_SERVICE_URL,
+      },
+      {
+        name: "openai",
+        model: "gpt-4.1",
+        url: process.env.OPENAI_SERVICE_URL,
+      },
+    ];
+
+    const systemPrompt = `Напиши реалистичное положительное дополнение к отзыву на товар "${productName}". 
+Оригинальный отзыв:
+"${oldReview}"
+
+Твоя задача — создать краткое дополнение, которое звучит как сообщение от того же покупателя, в том же стиле и манере речи, естественно продолжая мысль.
+
+Формат ответа ДОЛЖЕН быть строго таким:
+[основной текст дополнения, 1-2 предложения]
+Плюсы: [1–2 дополнительных преимущества, которые логично дополняют исходный отзыв]
+Минусы: ["нет", "не обнаружил", "не заметил", другие похожие фразы либо оставь пустым]
+
+Не повторяй информацию из оригинального отзыва дословно, но опирайся на него.
+Дополнение должно быть коротким, дружелюбным и естественным, как будто покупатель решил вернуться и добавить пару слов спустя некоторое время.`;
+
+    const requests = providers.map((provider) => {
+      if (!provider.url) {
+        console.error(`URL for ${provider.name} is not configured.`);
+        return Promise.reject({
+          provider: provider.name,
+          reason: `URL for ${provider.name} is not configured.`,
+        });
+      }
+
+      return axios
+        .post(
+          `${provider.url}/api/ai/${provider.name}`,
+          {
+            message: systemPrompt,
+            systemPrompt: systemPrompt,
+            provider: provider.name,
+            model: provider.model,
+            context: [],
+            userId: "68e61fc8e93a63122d0547aa",
+          },
+          {
+            timeout: 60000,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        )
+        .then((response) => ({
+          ...response.data,
+          provider: provider.name,
+        }));
+    });
+
+    const results = await Promise.allSettled(requests);
+
+    const successfulResponses = [];
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successfulResponses.push(result.value);
+      } else {
+        const providerName = providers[index].name;
+        console.error(`Error with provider ${providerName}:`, result.reason);
+      }
+    });
+
+    res.json({
+      success: true,
+      reviews: successfulResponses,
+    });
+  } catch (error) {
+    console.error("Error in /review-text route:", error);
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while reviewing the text.",
+    });
+  }
+});
 
 module.exports = router;

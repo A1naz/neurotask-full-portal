@@ -255,6 +255,25 @@ app.use('/api/harmex/review-text', async (req, res) => {
     res.status(error.response?.status || 500).json(error.response?.data || { message: 'Proxy error' });
   }
 });
+app.use('/api/harmex/review-additional-text', async (req, res) => {
+  try {
+    const { key, productName } = req.query;
+
+    const response = await axios.post(`${DATABASE_SERVICE_URL}/api/review-additional-text/review-additional-text`, 
+      { key, productName, oldReview },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': DATABASE_SERVICE_API_KEY
+        }
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error proxying review text request:', error.message);
+    res.status(error.response?.status || 500).json(error.response?.data || { message: 'Proxy error' });
+  }
+});
 
 // 🔍 МАРШРУТЫ ДЛЯ SELECTED-PROVIDERS (прокси к database-service)
 app.use('/api/selected-providers', require('./routes/selected-providers'));

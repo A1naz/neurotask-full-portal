@@ -215,6 +215,8 @@ app.use('/api/contact', contactRoutes);
 // Review Text Endpoints
 app.use('/api/review-text', require('./routes/reviewText'));
 
+app.use('/api/review-additional-text', require('./routes/review-additional-text'))
+
 // Обработка ошибок
 app.use((err, req, res, next) => {
   res.status(500).json({ 
